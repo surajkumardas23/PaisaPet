@@ -1,0 +1,434 @@
+# sample-sms.txt: SMS fixtures for Paisa Pet (SmsParser tests)
+#
+# Lines starting with # are comments. Write these fixtures BEFORE the parser.
+# A test should loop over every block and compare the parser output with the expect fields.
+# Only the text under "body:" is a real message. Every other line is test metadata that the app never sees.
+#
+# FORMAT
+#   ### <ID>              block start. D = UPI debit, C = credit, X = other non-UPI-debit, S = synthetic edge case
+#   sender: <id>          SMS sender. PLACEHOLDER IDs: replace with the real sender IDs from your phone
+#   expect: DEBIT | IGNORE | DUPLICATE
+#   amountPaise: <long>   DEBIT only. Money in paise, never floating point
+#   merchant: <text>      DEBIT only. Payee exactly as the bank prints it (do not clean up)
+#   date: <yyyy-mm-dd>    DEBIT only. The date printed in the message (day-month-year order as the bank writes it)
+#   month: <yyyy-mm>      DEBIT only. Month the transaction must be filed under (month of the date in the message)
+#   ref: <digits>         DEBIT only. UPI reference number
+#   receivedAt: <ISO>     Optional. When the SMS reached the phone. If omitted, tests use the message date at 12:00 local
+#   reason: <text>        IGNORE only. Why it must not become a transaction
+#   duplicateOf: <ID>     DUPLICATE only. Same sender + body as an earlier block (same smsHash)
+#   synthetic: true       Made up to cover an edge case. Everything else is based on real messages
+#   note: <text>          Optional explanation
+#   body:                 Message text starts on the next line and runs until a line containing only ---
+#
+# MASKING
+#   Names, account/card digits, mobile numbers, reference numbers, order IDs, OTPs and link tokens are fake.
+#   Wording, spacing, punctuation, casing, line breaks and truncation are kept exactly as received.
+#   Bank helpline numbers and merchant names are public and left as is.
+#   The account holder's name is masked as RAHUL SHARMA in every form it appears (RAHUL SHA, RAHULSHARMA).
+#
+# RULES THE FIXTURES ENCODE
+#   1. Do NOT classify on the words "debited" or "credited" alone. An ICICI debit reads
+#      "debited for Rs 620.00 ...; BIRRA BEVERAGES credited. UPI:..." so the word "credited" appears in a debit
+#      (it refers to the payee). Use one template per bank and check which side of the sentence the account is on.
+#   2. Debit wording differs by bank:
+#        HDFC : "Sent Rs.304.00 from HDFC Bank A/c 4821 To <payee> <date> Ref <12 digits>"
+#        SBI  : "Dear UPI user A/C X3190 debited by 49.00 on date 28Sep26 trf to <payee> Refno <12 digits>"
+#               (SBI prints the amount WITHOUT Rs/INR/rupee sign)
+#        ICICI: "Acct XX518 debited for Rs 189.00 on 28-Jun-26; <payee> credited. UPI:<12 digits>"
+#               (payee comes BEFORE the word "credited", reference follows "UPI:")
+#   3. Amount shapes: "Rs.304.00", "debited by 49.00", "Rs 189.00", "Rs.5000" (no decimals), "INR 12,459.00" (commas).
+#   4. Date shapes: 03/10/26, 28Sep26, 28-Jun-26, 21-10-26, 21/OCT/2026, 2025-11-09:11:32:58.
+#   5. Payee shapes: truncated ("ZEPTO MARKETPLAC"), double space ("MOHAN  SINGH"), no spaces ("RentomojoPvtLtd"),
+#      or the user's own name (self-transfer).
+#   6. Card messages ("Card", "DEBIT/ATM Card") are never UPI, even when they say Spent/used/debited.
+#   7. Failed or declined messages can contain the word "debited" but move no money.
+#   8. UPI AutoPay / mandate: a message that reports money SENT is a normal UPI debit and is captured (D01).
+#      Set-up and pre-debit notices move no money and are ignored (S07, S08) so one payment is never counted twice.
+#      Never drop a message just because it contains the word "mandate".
+#   9. Month filing: a transaction belongs to the month of the date printed in the message, not the month the SMS
+#      arrived or was tagged (S09). Time of day comes from the SMS received time. If no date can be read,
+#      the received time is used.
+#  10. Multi-part SMS joining is tested at receiver level, not here. The parser only ever sees the joined body.
+
+# ============================================================
+# A. UPI DEBITS: must produce one UNTAGGED transaction each
+# ============================================================
+
+### D01
+sender: AD-HDFCBK-S
+expect: DEBIT
+amountPaise: 30400
+merchant: RentomojoPvtLtd
+date: 2026-10-03
+month: 2026-10
+ref: 538204917365
+note: UPI AutoPay (mandate) payment. Starts with "UPI Mandate:" but money was actually sent, so it is captured like any other UPI debit. The word "mandate" must not cause a drop.
+body:
+UPI Mandate:
+Sent Rs.304.00
+from HDFC Bank A/c 4821
+To RentomojoPvtLtd
+03/10/26
+Ref 538204917365
+Not You? Call 18002586161/SMS BLOCK UPI to 7308080808
+---
+
+### D02
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 4900
+merchant: Jio Prepaid Rech
+date: 2026-09-28
+month: 2026-09
+ref: 704219356618
+note: SBI prints the amount without Rs/INR.
+body:
+Dear UPI user A/C X3190 debited by 49.00 on date 28Sep26 trf to Jio Prepaid Rech Refno 704219356618 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### D03
+sender: JD-ICICIT-S
+expect: DEBIT
+amountPaise: 18900
+merchant: Jio Prepaid Rec
+date: 2026-06-28
+month: 2026-06
+ref: 651208947335
+note: ICICI format. The word "credited" here refers to the payee. Payee sits before "credited"; reference follows "UPI:".
+body:
+ICICI Bank Acct XX518 debited for Rs 189.00 on 28-Jun-26; Jio Prepaid Rec credited. UPI:651208947335. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### D04
+sender: JD-ICICIT-S
+expect: DEBIT
+amountPaise: 62000
+merchant: BIRRA BEVERAGES
+date: 2026-06-27
+month: 2026-06
+ref: 651196203847
+body:
+ICICI Bank Acct XX518 debited for Rs 620.00 on 27-Jun-26; BIRRA BEVERAGES credited. UPI:651196203847. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### D05
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 16000
+merchant: MOHAN  SINGH
+date: 2026-06-26
+month: 2026-06
+ref: 813465207192
+note: Payment to a person. Payee name contains a double space exactly as received.
+body:
+Dear UPI user A/C X3190 debited by 160.00 on date 26Jun26 trf to MOHAN  SINGH Refno 813465207192 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### D06
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 14900
+merchant: ZEPTO MARKETPLAC
+date: 2026-06-26
+month: 2026-06
+ref: 296517043820
+note: Payee name is truncated by the bank.
+body:
+Dear UPI user A/C X3190 debited by 149.00 on date 26Jun26 trf to ZEPTO MARKETPLAC Refno 296517043820 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### D07
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 77663
+merchant: INNOVATIVE RETAI
+date: 2026-06-16
+month: 2026-06
+ref: 482950176304
+note: Non-zero paise (776.63).
+body:
+Dear UPI user A/C X3190 debited by 776.63 on date 16Jun26 trf to INNOVATIVE RETAI Refno 482950176304 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### D08
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 135500
+merchant: URBANCOMPANY
+date: 2026-10-11
+month: 2026-10
+ref: 367104829551
+body:
+Dear UPI user A/C X3190 debited by 1355.00 on date 11Oct26 trf to URBANCOMPANY Refno 367104829551 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### D09
+sender: JD-ICICIT-S
+expect: DEBIT
+amountPaise: 185000
+merchant: RAHUL SHARMA
+date: 2026-06-22
+month: 2026-06
+ref: 650718294463
+note: Payee is the account holder's own name (self-transfer). Parser still emits DEBIT. Whether self-transfers count as Misc is a PRD decision.
+body:
+ICICI Bank Acct XX518 debited for Rs 1850.00 on 22-Jun-26; RAHUL SHARMA credited. UPI:650718294463. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+# ============================================================
+# B. CREDITS: must be ignored (flip to DEBIT-style capture only if the PRD adds income tracking)
+# ============================================================
+
+### C01
+sender: JD-ICICIT-S
+expect: IGNORE
+reason: credit-upi
+note: UPI credit. Contains "UPI:" and an amount, so it must be rejected by direction (account is credited), not by missing keywords.
+body:
+Dear Customer, Acct XX518 is credited with Rs 13000.00 on 27-Jun-25 from RAHUL SHARMA. UPI:107298416352-ICICI Bank.
+---
+
+### C02
+sender: VM-SBIINB-S
+expect: IGNORE
+reason: credit-imps
+body:
+Dear Customer, Your a/c no. XXXXXXXX3190 is credited by Rs.105000.00 on 21-10-26 by a/c linked to mobile 9XXXXXX417-RAHUL SHA (IMPS Ref# 518302774961)-SBI
+---
+
+### C03
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: credit-card-payment
+body:
+HDFC Bank Cardmember, Online Payment of Rs.5000 vide Ref# 233llJTrB was credited to your card ending 7316 On 21/OCT/2026_value Date 21/OCT/2026
+---
+
+### C04
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: credit-card-payment
+body:
+HDFC Bank Cardmember, Online Payment of Rs.6173 vide Ref# 212021046nJANQF was credited to your card ending 7316 On 31/JUL/2026_value Date 31/JUL/2026
+---
+
+### C05
+sender: VM-SBIINB-S
+expect: IGNORE
+reason: credit-loan-account
+body:
+Dear Customer, Your loan A/C XXXXX204617 Credited INR 12,459.00 on 13/09/26,deposit transfer from Mr. RAHULSHARMA.-SBI. Download YONO
+---
+
+### C06
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: card-reversal
+body:
+Ur transaction on HDFC Bank DEBIT/ATM Card ending 6642 for Rs. 1052.29  has been credited/reversed by https://hdfcbk.io/k/Xy42P7hqLmA on 2021-07-20:01:35:16
+---
+
+# ============================================================
+# C. OTHER NON-UPI-DEBIT MESSAGES: must be ignored
+# ============================================================
+
+### X01
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: card-spend
+note: Says "Spent", has an amount and a "Not You?" line, but it is a debit card swipe, not UPI.
+body:
+Spent Rs.220 From HDFC Bank Card x5127 At .PVR INOX LIMITED_ On 2025-11-09:11:32:58 Bal Rs.1966 Not You? Call 18002586161/SMS BLOCK DC  5127 to 7308080808
+---
+
+### X02
+sender: VM-SBICRD-S
+expect: IGNORE
+reason: card-spend
+body:
+SBIDrCard X2290 used for Rs200.00 on08Nov20 atMH034397 Txn#004718203365 If not done fwd this SMS to 9223008333/call1800111109/9449112211 to block Card
+---
+
+### X03
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: card-declined
+body:
+TXN DECLINED: Rs.365.00 on 09-11-25 at 12:02 on HDFC Bank Debit Card xx5127. Reason: Tap and Pay usage disabled. Enable:https://hdfcbk.io/HDFCBK/a/aBcD1e
+---
+
+### X04
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: balance-alert
+body:
+Available Bal in HDFC Bank A/c XX4821 as on yesterday:20-OCT-26 is INR 1,10,267.26. Cheques are subject to clearing.For updated A/C Bal dial 18002703333.
+---
+
+### X05
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: balance-alert
+body:
+Available Bal in HDFC Bank A/c XX4821 as on yesterday:04-SEP-26 is INR 8,063.56. Cheques are subject to clearing.For updated A/C Bal dial 18002703333.
+---
+
+### X06
+sender: VM-AIRTEL-S
+expect: IGNORE
+reason: failed-payment
+note: Contains the word "debited" but the payment failed and no money moved.
+body:
+Hi, Payment of Rs. 199.0 has failed for your Airtel Mobile 9876541230. Any amount, if debited will be refunded to your source account within a day. Please keep order ID 7391846250173948215 for reference.
+---
+
+### X07
+sender: AX-BBNOW-S
+expect: IGNORE
+reason: failed-payment
+body:
+Dear Rahul,
+Payment for your bbnow order #2093817265 has failed. Kindly retry the payment for your order to be processed.
+
+Regards,
+Team bigbasket
+---
+
+### X08
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: otp
+body:
+Dear Customer,
+Set your HDFC Bank Credit Card 7316 PIN Instantly:
+Login to MyCards: https://hdfcbk.io/HDFCBK/s/AbCd1EfG
+Register your Credit Card with Last 4 digits
+Select Set PIN.
+Discover more PIN setting options: https://hdfcbk.io/HDFCBK/s/HiJk2LmN
+To set PIN at an HDFC Bank ATM, Use OTP 417305, OTP expiry: 14Feb25
+---
+
+### X09
+sender: VM-EKART-S
+expect: IGNORE
+reason: otp-delivery
+body:
+Ekart Update: Doubledicestore Back Cover ... with OTP 603815  will be delivered by 11 pm today.  Track: http://fkrt.it/EKARTL/AbCdEfNNNN
+---
+
+# ============================================================
+# D. SYNTHETIC EDGE CASES (made up, not from real messages: replace with real ones when you get them)
+# ============================================================
+
+### S01
+sender: JD-ICICIT-S
+expect: DUPLICATE
+duplicateOf: D04
+synthetic: true
+note: Same sender and body delivered twice. Second one must be dropped via the smsHash check.
+body:
+ICICI Bank Acct XX518 debited for Rs 620.00 on 27-Jun-26; BIRRA BEVERAGES credited. UPI:651196203847. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### S02
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 14900
+merchant: ZEPTO MARKETPLAC
+date: 2026-06-26
+month: 2026-06
+ref: 296517043999
+synthetic: true
+note: Same merchant, amount and date as D06 but a different Refno. A genuine second payment: both must be saved.
+body:
+Dear UPI user A/C X3190 debited by 149.00 on date 26Jun26 trf to ZEPTO MARKETPLAC Refno 296517043999 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### S03
+sender: JD-ICICIT-S
+expect: DEBIT
+amountPaise: 1250000
+merchant: BIRRA BEVERAGES
+date: 2026-06-27
+month: 2026-06
+ref: 651196209901
+synthetic: true
+note: Amount with Indian-style commas. Must parse to 12,50,000 paise (Rs 12,500.00).
+body:
+ICICI Bank Acct XX518 debited for Rs 12,500.00 on 27-Jun-26; BIRRA BEVERAGES credited. UPI:651196209901. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### S04
+sender: +919876500123
+expect: IGNORE
+reason: sender-is-phone-number
+synthetic: true
+note: Body looks exactly like a real ICICI debit but the sender is a phone number. Must be rejected before parsing.
+body:
+ICICI Bank Acct XX518 debited for Rs 500.00 on 27-Jun-26; QUICK CASH credited. UPI:651196200001. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### S05
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 4900
+merchant: Jio Prepaid Rech
+date: 2026-09-28
+month: 2026-09
+ref: 704219356618
+synthetic: true
+note: Same facts as D02 with a line break, extra spaces and different casing. Parser must normalise whitespace and case.
+body:
+dear upi user a/c x3190  debited by 49.00
+on date 28sep26   trf to Jio Prepaid Rech
+Refno 704219356618  if not u? call-1800111109 for other services-18001234-sbi
+---
+
+### S06
+sender: VK-SBIUPI-S
+expect: IGNORE
+reason: collect-request
+synthetic: true
+note: A request for money, not a payment. No money has moved.
+body:
+Dear UPI user, you have a collect request of Rs 500.00 from MOHAN SINGH. Open your UPI app to approve or decline. Do not share your UPI PIN.-SBI
+---
+
+### S07
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: mandate-setup
+synthetic: true
+note: Mandate SET-UP, not a debit. No money moved. The actual payment arrives later as a "Sent" message (D01) and is the one that gets captured, so counting this too would double count.
+body:
+UPI Mandate:
+You have created a mandate of Rs.304.00 on RentomojoPvtLtd from HDFC Bank A/c 4821. Frequency: Monthly. Start 03/10/26.
+Not You? Call 18002586161/SMS BLOCK UPI to 7308080808
+---
+
+### S08
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: mandate-pre-debit-notice
+synthetic: true
+note: Advance notice before an AutoPay debit. No money moved yet. The "Sent" message that follows (D01) is the one that gets captured.
+body:
+UPI Mandate:
+Rs.304.00 will be debited from HDFC Bank A/c 4821 on 03/10/26 towards RentomojoPvtLtd. Approve or decline in your UPI app.
+Not You? Call 18002586161/SMS BLOCK UPI to 7308080808
+---
+
+### S09
+sender: VK-SBIUPI-S
+expect: DEBIT
+amountPaise: 25000
+merchant: TEA POST
+date: 2026-06-30
+month: 2026-06
+ref: 482950170001
+receivedAt: 2026-07-01T00:04:00+05:30
+synthetic: true
+note: Payment dated 30 Jun but the SMS reached the phone at 00:04 on 1 Jul. Must be filed under June (month of the date in the message), not July.
+body:
+Dear UPI user A/C X3190 debited by 250.00 on date 30Jun26 trf to TEA POST Refno 482950170001 If not u? call-1800111109 for other services-18001234-SBI
+---
