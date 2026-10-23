@@ -90,7 +90,7 @@ The MVP covers one user, one budget (misc), two categories (Misc and Essential) 
 | Out of scope                                                                       | Why                                                |
 | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
 | Login (Gmail or any), cloud backup, sync across phones                             | No user value without a server; adds days of setup |
-| Card, ATM, NEFT/IMPS and NACH/ECS auto-debit transactions                          | Decided: UPI debits only, to keep parsing reliable |
+| Card, ATM, NEFT/IMPS and NACH/ECS auto-debit transactions (UPI AutoPay mandate payments are in scope) | Decided: UPI debits only, to keep parsing reliable |
 | Reading GPay/PhonePe app notifications                                             | Second capture path; v2 if SMS gaps prove large    |
 | More categories, sub-categories ("Chai & Snacks"), quick tags, splitting a payment | Two buckets answer the core question               |
 | Remembering payees to auto-tag, AI payee detection ("Detected as Tea Stall")       | Needs data first; v2                               |
@@ -149,7 +149,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 
 **S5 Home** — 05-home.png
 
-- Top: month name with dropdown (current month only in P0; past months P1), gear icon → S9.
+- Top: month name with dropdown, gear icon → S9.
 - Buddy card: Buddy in the current state, "₹X left of ₹Y", chip "NN% used · State", coloured progress bar, "₹S spent" and pace "₹P/day for D days left". Over budget: "₹Z over budget" in red.
 - Untagged card (only when ≥ 1 untagged): "N payments not tagged · Currently counted in Misc", **Tag now** → S6 filtered to Not tagged.
 - Recent: last 5 transactions (payee, time or date, amount, chip Misc / Essential / Not tagged). Tap row → S7. **See all** → S6.
@@ -197,7 +197,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 
 ## User stories
 
-Eighteen stories: 13 are P0 and must ship; 5 are P1 and are built only after every P0 works on a real phone.
+Eighteen stories: 14 are P0 and must ship; 4 are P1 and are built only after every P0 works on a real phone.
 
 | ID    | Area         | User story                                                                                                           | Requirements        | Priority  |
 | ----- | ------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------- | --------- |
@@ -217,12 +217,12 @@ Eighteen stories: 13 are P0 and must ship; 5 are P1 and are built only after eve
 | US-14 | Testing      | As the builder, I want to simulate a bank SMS in debug builds so I can test without making real payments.            | FR-19               | P0 Must   |
 | US-15 | Tagging      | As a UPI user, I want to undo a tag from the confirmation so a mis-tap is easy to fix.                               | FR-21               | P1 Should |
 | US-16 | Manual add   | As a UPI user, I want quick-add chips (+₹20 Chai, +₹50 Auto) so common cash or no-SMS spends take one tap.           | FR-22               | P1 Should |
-| US-17 | History      | As a UPI user, I want to look at past months so I can compare how I did.                                             | FR-23               | P1 Should |
+| US-17 | History      | As a UPI user, I want to look at past months so I can compare how I did.                                             | FR-23               | P0 Must   |
 | US-18 | Look         | As a UPI user, I want a dark theme so the app matches my phone.                                                      | NFR-06              | P1 Should |
 
 ## Functional requirements
 
-Each requirement lists testable acceptance criteria; all are P0 except FR-17 and FR-21 to FR-23, which are P1.
+Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR-21 and FR-22, which are P1.
 
 **Onboarding and setup**
 
@@ -232,8 +232,8 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17 and
 
 **Capture and tagging**
 
-- **FR-04 Detect UPI debits (P0).** Given a UPI debit SMS arrives, when the app is closed or the phone locked, then a transaction is saved within 5 seconds. Non-UPI, credit, OTP, failed and promotional messages create nothing. Rules in "SMS capture and parsing rules".
-- **FR-05 Extract fields (P0).** Each saved transaction has amount (exact to the paisa), payee (name or UPI ID, or "UPI payment" if none), UPI reference if present, bank sender ID and the SMS time.
+- **FR-04 Detect UPI debits (P0).** Given a UPI debit SMS arrives, when the app is closed or the phone locked, then a transaction is saved within 5 seconds. Non-UPI, credit, OTP, failed and promotional messages create nothing. AutoPay payments that report money sent are captured. Rules in "SMS capture and parsing rules".
+- **FR-05 Extract fields (P0).** Each saved transaction has amount (exact to the paisa), payee (name or UPI ID, or "UPI payment" if none), UPI reference if present, bank sender ID and the transaction date (from the message, falling back to SMS time).
 - **FR-06 No duplicates (P0).** The same payment arriving twice (same UPI reference, or same amount + payee within 2 minutes) is saved once.
 - **FR-07 Tag prompt (P0).** Each new SMS transaction posts a notification "₹240 paid to Swiggy — Misc or Essential?" with buttons **Misc** and **Essential**. Tapping a button saves the category without opening the app and updates Home and widgets. Tapping the body opens S7 for that transaction. Swiping it away leaves it Not tagged.
 - **FR-08 Untagged counts as Misc (P0).** Not tagged transactions are included in misc spent and shown with a Not tagged chip until the user picks a category.
@@ -251,14 +251,13 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17 and
 - **FR-18 CSV export (P0).** Exports all transactions with the columns in "Data model" through the Android share sheet. File name paisa-pet-YYYY-MM-DD.csv. Works offline.
 - **FR-19 Simulate SMS (P0, debug only).** Settings › Simulate SMS lets the builder paste a message body and sender ID and run it through the full pipeline (parse → save → notify). Absent in release builds.
 - **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication.
+- **FR-23 Past months (P0).** The month dropdown on Home and Transactions lists months with data; past months are read-only views with that month's budget.
 
 **Alerts and P1 extras**
 
 - **FR-17 Limit alerts (P1).** When % used first reaches 75% in a month, post "Buddy is getting sick — ₹X misc left this month." When it first goes over 100%, post "Buddy fainted — you've crossed your ₹Y misc budget." Each fires once per month; it re-arms if a budget increase or edit drops % below that level.
 - **FR-21 Undo (P1).** After a tag from the notification, the notification changes to "Added to Misc · ₹1,560 left" with **Undo** for 10 seconds; Undo sets it back to Not tagged.
 - **FR-22 Quick add (P1).** Home shows chips +₹20 Chai, +₹50 Auto, +₹100 Quick; a tap opens S8 pre-filled (amount, Paid to, Misc).
-- **FR-23 Past months (P1).** The month dropdown on Home and Transactions lists months with data; past months are read-only views with that month's budget.
-
 ## SMS capture and parsing rules
 
 An SMS becomes a transaction only if it is a UPI payment AND a debit AND not on the exclusion list; parsing runs on the phone with plain pattern rules, never an online service.
@@ -280,18 +279,20 @@ Work after step 1 runs off the main thread (goAsync() plus a coroutine, or an ex
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
 | Is UPI             | contains "UPI", or a UPI ID pattern \[\\w.\\-\]+@\[a-zA-Z\]{2,}, or "UPI Ref" / "RRN"                                          | Drop (card, ATM, NEFT, IMPS, NACH) |
 | Is debit           | contains debited, debit, sent, paid, spent, or "Dr" next to the amount                                                         | Drop                               |
-| Not credit         | does not contain credited, received, refund, reversed, cashback                                                                | Drop                               |
+| Not credit         | The account is on the paying side: the message says debited / debited by / debited for / Sent ... from. Words like credited, received, refund, reversed or cashback mean money came in, EXCEPT an ICICI-style debit that names the payee before 'credited' (e.g. '...debited for Rs 620.00 on 27-Jun-26; BIRRA BEVERAGES credited. UPI:...'), which is still a debit | Drop                               |
 | Not failed         | does not contain failed, declined, unsuccessful, not processed                                                                 | Drop                               |
 | Not OTP or request | does not contain OTP, one time password, "will be debited", "requested money", "collect request", mandate created / registered | Drop                               |
 
-UPI AutoPay _executions_ (an actual debit) pass these rules and are captured; the user tags them, usually Essential. Mandate set-up messages are dropped.
+Decide direction per bank template (HDFC 'Sent ... from ... To', SBI 'debited by ... trf to', ICICI 'debited for ...; payee credited'), not by single words. docs/sample-sms.txt is the reference.
+
+UPI AutoPay (mandate) payments: a message that reports money actually sent (for example 'UPI Mandate: Sent Rs.304.00 from ... To ...') is a UPI debit and is captured like any other. Mandate set-up, approval and 'will be debited' notice messages move no money and are dropped, so a payment is never counted twice. Never drop a message just because it contains the word 'mandate'.
 
 **Field extraction**
 
-- **Amount:** first match of (?:Rs\\.?|INR|₹)\\s?(\[\\d,\]+(?:\\.\\d{1,2})?) that is NOT preceded within 12 characters by "Bal", "balance", "Avl" or "Available". Store in paise as a whole number.
-- **Payee:** text after "to", "paid to", "trf to" or "VPA" up to the next keyword (on, Ref, UPI, date) or full stop; else the first UPI ID in the body; else "UPI payment". Trim and cap at 40 characters.
-- **UPI reference:** 12-digit number after "Ref", "Ref No", "RRN" or "UPI Ref", if present.
-- **Time:** the SMS timestamp, not dates printed in the body.
+- **Amount:** first match of (?:Rs\\.?|INR|₹)\\s?(\[\\d,\]+(?:\\.\\d{1,2})?) that is NOT preceded within 12 characters by "Bal", "balance", "Avl" or "Available". Store in paise as a whole number. SBI messages print the amount with no Rs or INR (for example 'debited by 49.00'), so also accept the number right after 'debited by'.
+- **Payee:** text after "to", "paid to", "trf to" or "VPA" up to the next keyword (on, Ref, UPI, date) or full stop; else the first UPI ID in the body; else "UPI payment". Trim and cap at 40 characters. ICICI: the text between ';' and ' credited'. HDFC: the text after 'To' up to the line break or date.
+- **UPI reference:** 12-digit number after Ref, Ref No, Refno, RRN, UPI Ref or UPI:, if present.
+- **Transaction date (occurredAt):** the date printed in the message, read day-first as the bank writes it (03/10/26, 28Sep26, 28-Jun-26, 21-10-26). Time of day comes from the SMS received time. If no date can be read, use the SMS received time. A transaction belongs to the month of this date in the phone's local time zone.
 - **Bank:** the sender ID with its 2–3 letter prefix removed (HDFCBK, SBIUPI).
 
 **De-duplication key**
@@ -310,7 +311,7 @@ Only Misc and Not tagged payments in the current calendar month count against th
 
 **Formulas** (month = calendar month in the phone's time zone, 1st 00:00 to last day 23:59)
 
-- miscSpent = sum of amounts where category is MISC or UNTAGGED and the date is in the month.
+- miscSpent = sum of amounts where category is MISC or UNTAGGED and occurredAt (the transaction date) is in the month.
 - left = budget − miscSpent (can be negative; show "₹Z over budget" when below 0).
 - pctUsed = miscSpent ÷ budget × 100, rounded down to a whole number for display; use the exact value for state and alerts.
 - daysLeft = days from today to month-end, counting today. pace = max(left, 0) ÷ daysLeft, shown as "₹P/day for D days left".
@@ -388,7 +389,7 @@ Two Room tables and a few DataStore preferences hold everything; money is stored
 | payee                | String                           | Name, UPI ID, or "UPI payment"; manual entries may be "Manual entry" |
 | upiRef               | String?                          | 12-digit reference when present; checked for duplicates              |
 | bank                 | String?                          | Sender ID without prefix, e.g. HDFCBK                                |
-| occurredAt           | Long (epoch ms)                  | SMS time, or the date/time picked for manual entries                 |
+| occurredAt           | Long (epoch ms)                  | Date printed in the SMS (time of day from SMS received time; falls back to received time), or the date/time picked for manual entries |
 | monthKey             | String YYYY-MM                   | Indexed; derived from occurredAt in local time                       |
 | category             | Enum MISC / ESSENTIAL / UNTAGGED | SMS entries start UNTAGGED; manual default MISC                      |
 | source               | Enum SMS / MANUAL                |                                                                      |
@@ -426,6 +427,7 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Capture | Refund of an earlier payment                                                                           | Not captured as income in MVP; user edits or deletes the original if needed                                         |
 | Capture | Personal SMS that looks like a payment                                                                 | Dropped: sender is a phone number                                                                                   |
 | Capture | Payment made before install or before SMS permission                                                   | Not captured (no back-fill in MVP); add manually                                                                    |
+| Capture | Mandate pre-debit notice, then the actual debit                                                        | Only the 'Sent' debit message is captured; the notice is dropped.                                                   |
 | Tagging | User never taps the notification                                                                       | Stays Not tagged, counts as Misc, shown on Home card                                                                |
 | Tagging | Several prompts pending                                                                                | Each acts on its own transaction ID                                                                                 |
 | Tagging | Notification permission off                                                                            | Transactions still saved; Home shows untagged card                                                                  |
@@ -435,6 +437,7 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Budget  | Way over budget (e.g. 300%)                                                                            | Progress bar full red, "₹Z over budget", Fainted                                                                    |
 | Month   | Payment at 23:59 on the last day, tagged after midnight                                                | Counts in the month of occurredAt, not the tag time                                                                 |
 | Month   | Phone time zone or date changed                                                                        | Months follow the phone's local date                                                                                |
+| Month   | SMS for a payment made last month arrives after month-end                                              | Filed under the month of the date in the message. If that month has no budget row, create one from the default budget. |
 | Manual  | Amount 0, negative or non-numeric                                                                      | Add disabled with inline error                                                                                      |
 | Manual  | Date in the future or outside the current month                                                        | Not allowed in date picker                                                                                          |
 | Data    | App uninstalled                                                                                        | All data lost; Settings warns to export first                                                                       |
@@ -539,7 +542,7 @@ Build in 9 phases, riskiest first, so a tester build exists by Sunday afternoon 
 | 2\. Data and logic     | Room, DataStore, repository, budget maths, Buddy state, month keys + tests                                      | FR-08, FR-09, FR-10, FR-16 | Boundary tests pass                                                       | Sat 24, afternoon       |
 | 3\. Core loop          | SMS receiver, tag notification and action receiver, debug Simulate SMS                                          | FR-07, FR-19, FR-20        | A real ₹1 UPI payment is tagged from the notification with the app closed | Sat 24, night           |
 | 4\. Onboarding         | S1, S2, S3 and navigation                                                                                       | FR-01, FR-02, FR-03        | Fresh install reaches Home; denied path works                             | Sun 25, morning         |
-| 5\. Main screens       | S4/S5 Home, S6 Transactions, S7 Edit, S8 Add, S9 Settings with CSV export                                       | FR-11 to FR-14, FR-18      | Device checklist items for these screens pass                             | Sun 25, early afternoon |
+| 5\. Main screens       | S4/S5 Home, S6 Transactions, S7 Edit, S8 Add, S9 Settings with CSV export                                       | FR-11 to FR-14, FR-18, FR-23 | Device checklist items for these screens pass                             | Sun 25, early afternoon |
 | 6\. Tester build       | Signed release APK, tester guide, send to 4–5 users                                                             | —                          | Two testers have it installed and capturing                               | Sun 25, afternoon       |
 | 7\. Widgets and Buddy  | Glance widgets, Buddy art for 5 states, limit alerts                                                            | FR-15, FR-17               | Widgets and alerts pass the checklist; testers get v0.2                   | Sun 25, night           |
 | 8\. Iterate and submit | Fix top feedback, P1 items if time (FR-21, FR-22, FR-23), final APK, demo video, update this PRD with learnings | —                          | Submission sent                                                           | Mon 26 Oct, by 11:30 PM |

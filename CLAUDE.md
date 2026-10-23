@@ -44,10 +44,11 @@ There may be no emulator (the dev laptop is Windows on ARM), so plan to test on 
 
 ## Hard rules
 
-- **UPI debits only.** Card, ATM, NEFT/IMPS, NACH, credits, OTPs, failed payments, collect requests and mandate set-ups must produce no transaction. Classification and extraction rules are in the PRD under "SMS capture and parsing rules".
+- **UPI debits only.** Card, ATM, NEFT/IMPS, NACH, credits, OTPs, failed payments, collect requests and mandate set-ups must produce no transaction. UPI AutoPay payments that report money sent count as UPI debits. Mandate set-up and pre-debit notices do not. Classification and extraction rules are in the PRD under "SMS capture and parsing rules".
 - **No `INTERNET` permission**, no analytics or crash SDKs, no network calls. Never store raw SMS bodies, and never log them in release builds. Store only the parsed fields plus a SHA-256 `smsHash` of sender + body.
 - **Money is a `Long` in paise.** Use no floating point for amounts. Display Indian grouping (₹1,00,000) and hide paise unless non-zero.
-- Untagged transactions count as Misc. Essential never counts against the budget. A transaction belongs to the month of `occurredAt` (local time zone), not the month it was tagged.
+- Untagged transactions count as Misc. Essential never counts against the budget. A transaction belongs to the month of `occurredAt` (local time zone), not the month it was tagged. occurredAt is the date printed in the SMS, with time of day from the SMS timestamp (fallback: the SMS timestamp).
+- Where the PRD's parsing rules disagree with a fixture in docs/sample-sms.txt, the fixture wins. Tell me so the PRD can be fixed.
 - No destructive Room migrations once testers have installed the app (NFR-08).
 - The "Simulate SMS" tool (FR-19) exists only in debug builds.
 
