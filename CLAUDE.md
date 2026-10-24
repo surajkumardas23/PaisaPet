@@ -24,7 +24,8 @@ The package is `com.example.paisapet`.
 - Phase 0: project created, runs on phone, repo on GitHub. Done.
 - Phase 0.5: screenshots moved to docs/screens/, minSdk set to 26, PRD tidy-ups. Done.
 - Phase 1: SMS parser, duplicate rules and fixture tests in com.example.paisapet.sms. 95 tests green. Done.
-- Phase 2: IN PROGRESS. Done (steps 1-6): dependencies, enums, month keys, budget maths and Buddy state, Room entities/DAOs/database, SettingsStore, repository (JVM-tested mappers). Next: step 7 of docs/phase2-plan.md (all phone tests in one run).
+- Phase 2: Room database, repository, SettingsStore, budget maths and Buddy state. 179 JVM tests and 37 phone tests green. Done.
+- Phase 3: not started.
 
 Update this section at the end of every phase.
 
@@ -66,3 +67,8 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - Parser templates exist only for HDFC, SBI and ICICI; a new bank needs real samples in docs/sample-sms.txt first.
 - smsHash is the SHA-256 of sender, then a newline character, then body. Never change this once testers install.
 - Parser tests read ../docs/sample-sms.txt; run them with ./gradlew :app:testDebugUnitTest --tests com.example.paisapet.sms.*
+- Only AppContainer creates the settings DataStore; two DataStore instances on one file crash the app.
+- A month's budget is its month_budgets row if there is one, otherwise the default budget (SettingsStore).
+- connectedAndroidTest uninstalls the app from the phone and wipes its data: never run it on a phone holding real payment data. Room tests run on the phone: ./gradlew connectedAndroidTest.
+- Database changes: bump the Room version, write a real Migration, commit the new schema JSON in app/schemas. Never use destructive migration.
+- Parsed money, months and Buddy state come from the pure functions in budget/ (month filed by occurredAt); do not recompute them in UI code.

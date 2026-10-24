@@ -1,0 +1,36 @@
+package com.example.paisapet
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
+import com.example.paisapet.data.TransactionRepository
+import com.example.paisapet.data.db.PaisaPetDatabase
+import com.example.paisapet.data.settings.SettingsStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import java.time.Clock
+
+/** Hand-written dependency container (no Hilt). Everything is lazy so app start stays fast. */
+class AppContainer(context: Context) {
+
+    private val applicationContext = context.applicationContext
+
+    val database: PaisaPetDatabase by lazy { PaisaPetDatabase.create(applicationContext) }
+
+    // The only place that may create the "settings" DataStore: two instances on one file crash the app.
+    private val settingsDataStore: DataStore<Preferences> by lazy {
+        PreferenceDataStoreFactory.create(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+            produceFile = { applicationContext.preferencesDataStoreFile("settings") },
+        )
+    }
+
+    val settings: SettingsStore by lazy { SettingsStore(settingsDataStore) }
+
+    val repository: TransactionRepository by lazy {
+        TransactionRepository(database, settings, Clock.systemDefaultZone())
+    }
+}

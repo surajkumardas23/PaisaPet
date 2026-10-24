@@ -340,7 +340,7 @@ Buddy art: one vector drawable per state (exported from the Stitch screens or re
 **Month rollover**
 
 - No data is deleted. The current month is computed from the clock, so screens switch automatically.
-- A daily WorkManager job just after midnight refreshes widgets and creates the new month's budget row from the default budget.
+- A month with no budget row uses the default budget, so month reset needs no database work. The daily WorkManager job just after midnight only refreshes the widgets.
 
 ## Notifications and widget spec
 
@@ -397,7 +397,7 @@ Two Room tables and a few DataStore preferences hold everything; money is stored
 | source               | Enum SMS / MANUAL                |                                                                      |
 | tagSource            | Enum NOTIFICATION / APP / null   | Where the category was last set; for metrics                         |
 | taggedAt             | Long?                            | When the category was last set                                       |
-| smsHash              | String?, unique                  | SHA-256 of sender + body; raw body is never stored                   |
+| smsHash              | String?, unique                  | SHA-256 of sender + a newline character + body; raw body is never stored; this input never changes once testers install |
 | createdAt, updatedAt | Long                             | createdAt = capture time                                             |
 
 **Table month_budgets**
@@ -430,6 +430,7 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Capture | Personal SMS that looks like a payment                                                                 | Dropped: sender is a phone number                                                                                   |
 | Capture | Payment made before install or before SMS permission                                                   | Not captured (no back-fill in MVP); add manually                                                                    |
 | Capture | Mandate pre-debit notice, then the actual debit                                                        | Only the 'Sent' debit message is captured; the notice is dropped.                                                   |
+| Capture | A payment is added by hand and then its SMS arrives                                                    | Both are saved, because manual entries are not part of the duplicate check; the user deletes one                    |
 | Tagging | User never taps the notification                                                                       | Stays Not tagged, counts as Misc, shown on Home card                                                                |
 | Tagging | Several prompts pending                                                                                | Each acts on its own transaction ID                                                                                 |
 | Tagging | Notification permission off                                                                            | Transactions still saved; Home shows untagged card                                                                  |
