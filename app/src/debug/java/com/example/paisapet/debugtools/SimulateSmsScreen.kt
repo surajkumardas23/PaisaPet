@@ -114,6 +114,9 @@ internal fun SimulateSmsScreen(container: AppContainer, modifier: Modifier = Mod
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { fill(SampleBank.HDFC) }) { Text("HDFC sample") }
+            OutlinedButton(onClick = { fill(SampleBank.HDFC_AUTOPAY) }) { Text("HDFC AutoPay sample") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { fill(SampleBank.SBI) }) { Text("SBI sample") }
             OutlinedButton(onClick = { fill(SampleBank.ICICI) }) { Text("ICICI sample") }
         }

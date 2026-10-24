@@ -32,6 +32,7 @@
 #      (it refers to the payee). Use one template per bank and check which side of the sentence the account is on.
 #   2. Debit wording differs by bank:
 #        HDFC : "Sent Rs.304.00 from HDFC Bank A/c 4821 To <payee> <date> Ref <12 digits>"
+#               A regular HDFC debit has 'On' before the date and writes the account as A/C *<last4>; an AutoPay one (D01) has neither.
 #        SBI  : "Dear UPI user A/C X3190 debited by 49.00 on date 28Sep26 trf to <payee> Refno <12 digits>"
 #               (SBI prints the amount WITHOUT Rs/INR/rupee sign)
 #        ICICI: "Acct XX518 debited for Rs 189.00 on 28-Jun-26; <payee> credited. UPI:<12 digits>"
@@ -173,6 +174,25 @@ ref: 650718294463
 note: Payee is the account holder's own name (self-transfer). Parser still emits DEBIT. Whether self-transfers count as Misc is a PRD decision.
 body:
 ICICI Bank Acct XX518 debited for Rs 1850.00 on 22-Jun-26; RAHUL SHARMA credited. UPI:650718294463. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766.
+---
+
+### D10
+sender: AD-HDFCBK-S
+expect: DEBIT
+amountPaise: 31274
+merchant: Zomato Media Private Limi
+date: 2026-10-25
+month: 2026-10
+ref: 534902716384
+note: Regular HDFC UPI debit (not AutoPay). The bank cuts the payee short. "On" sits before the date and the account is written A/C *4821.
+body:
+Sent Rs.312.74
+From HDFC Bank A/C *4821
+To Zomato Media Private Limi
+On 25/10/26
+Ref 534902716384
+Not You?
+Call 18002586161/SMS BLOCK UPI to 7308080808
 ---
 
 # ============================================================

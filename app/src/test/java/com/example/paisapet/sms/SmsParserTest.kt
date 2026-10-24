@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /** Cases the fixture file does not cover. */
@@ -119,5 +120,55 @@ class SmsParserTest {
         assertEquals(30400L, debit.amountPaise)
         assertEquals("SHOP", debit.payee)
         assertEquals("123456789012", debit.upiRef)
+    }
+
+    // HDFC regular debit: "On" before the date, account written A/C *4821 (D10)
+
+    private val hdfcRegular = "Sent Rs.312.74\nFrom HDFC Bank A/C *4821\nTo Zomato Media Private Limi\nOn 25/10/26\n" +
+        "Ref 534902716384\nNot You?\nCall 18002586161/SMS BLOCK UPI to 7308080808"
+
+    private fun assertZomato(debit: ParsedDebit) {
+        assertEquals(31274L, debit.amountPaise)
+        assertEquals("534902716384", debit.upiRef)
+        assertEquals(LocalDate.of(2026, 10, 25), debit.occurredAt.atZone(zone).toLocalDate())
+    }
+
+    @Test
+    fun hdfcRegular_payeeIntactWithoutOn() {
+        val debit = assertDebit(parse(hdfcRegular))
+        assertEquals("Zomato Media Private Limi", debit.payee)
+        assertZomato(debit)
+    }
+
+    @Test
+    fun hdfcRegular_allLowercase() {
+        val debit = assertDebit(parse(hdfcRegular.lowercase()))
+        assertEquals("zomato media private limi", debit.payee)
+        assertZomato(debit)
+    }
+
+    @Test
+    fun hdfcRegular_singleLine() {
+        val body = "Sent Rs.312.74 From HDFC Bank A/C *4821 To Zomato Media Private Limi On 25/10/26 Ref 534902716384 " +
+            "Not You? Call 18002586161/SMS BLOCK UPI to 7308080808"
+        val debit = assertDebit(parse(body))
+        assertEquals("Zomato Media Private Limi", debit.payee)
+        assertZomato(debit)
+    }
+
+    @Test
+    fun hdfcRegular_payeeEndingInOnKeepsIt() {
+        val body = hdfcRegular.replace("Zomato Media Private Limi", "Amazon")
+        assertEquals("Amazon", assertDebit(parse(body)).payee)
+    }
+
+    @Test
+    fun hdfcAutoPay_withoutOnStillParses() {
+        val body = "UPI Mandate:\nSent Rs.304.00\nfrom HDFC Bank A/c 4821\nTo RentomojoPvtLtd\n03/10/26\n" +
+            "Ref 538204917365\nNot You? Call 18002586161/SMS BLOCK UPI to 7308080808"
+        val debit = assertDebit(parse(body))
+        assertEquals("RentomojoPvtLtd", debit.payee)
+        assertEquals(30400L, debit.amountPaise)
+        assertEquals("538204917365", debit.upiRef)
     }
 }
