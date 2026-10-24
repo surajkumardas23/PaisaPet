@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">PaisaPet</string>
+    <string name="channel_tag_prompts">Payment tagging</string>
+    <string name="channel_budget_alerts">Budget alerts</string>
+    <string name="action_misc">Misc</string>
+    <string name="action_essential">Essential</string>
 </resources>

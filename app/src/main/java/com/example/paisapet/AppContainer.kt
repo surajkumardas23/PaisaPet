@@ -8,10 +8,15 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import com.example.paisapet.data.TransactionRepository
 import com.example.paisapet.data.db.PaisaPetDatabase
 import com.example.paisapet.data.settings.SettingsStore
+import com.example.paisapet.notify.TagActionHandler
+import com.example.paisapet.notify.TagPromptNotifier
+import com.example.paisapet.sms.SmsParser
+import com.example.paisapet.sms.SmsPipeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
+import java.time.ZoneId
 
 /** Hand-written dependency container (no Hilt). Everything is lazy so app start stays fast. */
 class AppContainer(context: Context) {
@@ -32,5 +37,25 @@ class AppContainer(context: Context) {
 
     val repository: TransactionRepository by lazy {
         TransactionRepository(database, settings, Clock.systemDefaultZone())
+    }
+
+    /** Receivers launch their goAsync() work here, off the main thread. */
+    val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+
+    val tagPromptNotifier: TagPromptNotifier by lazy { TagPromptNotifier(applicationContext) }
+
+    val smsPipeline: SmsPipeline by lazy {
+        SmsPipeline(
+            parse = { s, b, t -> SmsParser.parse(s, b, t, ZoneId.systemDefault()) },
+            save = repository::saveParsedDebit,
+            prompt = { id, debit -> tagPromptNotifier.show(id, debit) },
+        )
+    }
+
+    val tagActionHandler: TagActionHandler by lazy {
+        TagActionHandler(
+            setCategory = repository::setCategory,
+            cancelPrompt = tagPromptNotifier::cancel,
+        )
     }
 }
