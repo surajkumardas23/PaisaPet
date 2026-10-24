@@ -1,5 +1,7 @@
 package com.example.paisapet.format
 
+import java.util.Locale
+
 /**
  * Paise as rupees with Indian grouping: 24000 → "₹240", 77663 → "₹776.63", 10000000 → "₹1,00,000".
  * Paise are shown only when non-zero. Negative amounts get a leading "-".
@@ -10,7 +12,7 @@ fun formatRupees(paise: Long): String {
     val rupees = (paise / 100).let { if (negative) -it else it }
     val rest = (paise % 100).let { if (negative) -it else it }
     val sign = if (negative) "-" else ""
-    val fraction = if (rest == 0L) "" else ".%02d".format(rest)
+    val fraction = if (rest == 0L) "" else String.format(Locale.ROOT, ".%02d", rest)
     return "$sign₹${groupIndian(rupees.toString())}$fraction"
 }
 
