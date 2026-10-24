@@ -375,13 +375,13 @@ amountPaise: 4900
 merchant: Jio Prepaid Rech
 date: 2026-09-28
 month: 2026-09
-ref: 704219356618
+ref: 704219356699
 synthetic: true
 note: Same facts as D02 with a line break, extra spaces and different casing. Parser must normalise whitespace and case.
 body:
 dear upi user a/c x3190  debited by 49.00
 on date 28sep26   trf to Jio Prepaid Rech
-Refno 704219356618  if not u? call-1800111109 for other services-18001234-sbi
+Refno 704219356699  if not u? call-1800111109 for other services-18001234-sbi
 ---
 
 ### S06

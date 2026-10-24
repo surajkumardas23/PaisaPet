@@ -234,7 +234,7 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 
 - **FR-04 Detect UPI debits (P0).** Given a UPI debit SMS arrives, when the app is closed or the phone locked, then a transaction is saved within 5 seconds. Non-UPI, credit, OTP, failed and promotional messages create nothing. AutoPay payments that report money sent are captured. Rules in "SMS capture and parsing rules".
 - **FR-05 Extract fields (P0).** Each saved transaction has amount (exact to the paisa), payee (name or UPI ID, or "UPI payment" if none), UPI reference if present, bank sender ID and the transaction date (from the message, falling back to SMS time).
-- **FR-06 No duplicates (P0).** The same payment arriving twice (same UPI reference, or same amount + payee within 2 minutes) is saved once.
+- **FR-06 No duplicates (P0).** The same payment arriving twice is saved once: the same message (same sender and body), or the same UPI reference. If both have a reference and the references differ, they are different payments, even with the same amount, payee and time. Only when a reference is missing: same amount and same payee within 2 minutes.
 - **FR-07 Tag prompt (P0).** Each new SMS transaction posts a notification "₹240 paid to Swiggy — Misc or Essential?" with buttons **Misc** and **Essential**. Tapping a button saves the category without opening the app and updates Home and widgets. Tapping the body opens S7 for that transaction. Swiping it away leaves it Not tagged.
 - **FR-08 Untagged counts as Misc (P0).** Not tagged transactions are included in misc spent and shown with a Not tagged chip until the user picks a category.
 
@@ -273,6 +273,8 @@ An SMS becomes a transaction only if it is a UPI payment AND a debit AND not on 
 
 Work after step 1 runs off the main thread (goAsync() plus a coroutine, or an expedited WorkManager job).
 
+How it is built: the parser uses one template per bank format (HDFC, SBI and ICICI at launch). A message that matches no template is ignored. The table below says what must hold; where it differs from the fixtures in docs/sample-sms.txt, the fixtures win. To support a new bank, first add real redacted samples to docs/sample-sms.txt, then add a template.
+
 **Classification rules** (case-insensitive)
 
 | Check              | Counts as a match when the body…                                                                                               | If it fails                        |
@@ -293,17 +295,17 @@ UPI AutoPay (mandate) payments: a message that reports money actually sent (for 
 - **Payee:** text after "to", "paid to", "trf to" or "VPA" up to the next keyword (on, Ref, UPI, date) or full stop; else the first UPI ID in the body; else "UPI payment". Trim and cap at 40 characters. ICICI: the text between ';' and ' credited'. HDFC: the text after 'To' up to the line break or date.
 - **UPI reference:** 12-digit number after Ref, Ref No, Refno, RRN, UPI Ref or UPI:, if present.
 - **Transaction date (occurredAt):** the date printed in the message, read day-first as the bank writes it (03/10/26, 28Sep26, 28-Jun-26, 21-10-26). Time of day comes from the SMS received time. If no date can be read, use the SMS received time. A transaction belongs to the month of this date in the phone's local time zone.
-- **Bank:** the sender ID with its 2–3 letter prefix removed (HDFCBK, SBIUPI).
+- **Bank:** the sender ID with its 2-3 letter prefix and one-letter suffix removed (AD-HDFCBK-S becomes HDFCBK).
 
 **De-duplication key**
 
-- Same UPI reference already saved → duplicate.
-- No reference: same amount and same payee within 2 minutes → duplicate.
-- A hash of sender + body is also stored, so the same SMS re-delivered is ignored.
+- Same message: smsHash = SHA-256 of sender + a newline character + body. The same hash already saved → duplicate, so the same SMS re-delivered is ignored. The hash input never changes once testers install the app.
+- Both have a UPI reference: duplicate only if the references are equal. Different references are different payments, even with the same amount, payee and time.
+- A reference is missing on either side: same amount and same payee (ignoring case and spaces at the ends) within 2 minutes → duplicate.
 
 **Fixtures (required before coding Phase 1)**
 
-Bank formats differ and change, so the parser is built and unit-tested against real messages, not guesses. Collect 15–20 real UPI debit SMS from at least 4 banks (HDFC, SBI, ICICI, Axis or Kotak), plus 5–10 messages that must be rejected (credit, OTP, card spend, failed, collect request). Mask account numbers and save them in docs/sample-sms.txt with an expected result for each line.
+Bank formats differ and change, so the parser is built and unit-tested against real messages, not guesses. Collect 15–20 real UPI debit SMS from at least 4 banks (HDFC, SBI, ICICI, Axis or Kotak), plus 5–10 messages that must be rejected (credit, OTP, card spend, failed, collect request). Mask account numbers and save them in docs/sample-sms.txt with an expected result for each line. Status after Phase 1: 13 debit fixtures from 3 banks (HDFC, SBI, ICICI) and 20 ignore or duplicate fixtures; Axis and Kotak need real samples.
 
 ## Budget logic, Buddy states and alerts
 

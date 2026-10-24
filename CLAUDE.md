@@ -23,7 +23,8 @@ The package is `com.example.paisapet`.
 
 - Phase 0: project created, runs on phone, repo on GitHub. Done.
 - Phase 0.5: screenshots moved to docs/screens/, minSdk set to 26, PRD tidy-ups. Done.
-- Phase 1: not started.
+- Phase 1: SMS parser, duplicate rules and fixture tests in com.example.paisapet.sms. 95 tests green. Done.
+- Phase 2: not started.
 
 Update this section at the end of every phase.
 
@@ -62,3 +63,6 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - The UI observes Room `Flow`s. No Hilt: use a hand-written `AppContainer`.
 - Notification ID is the transaction ID. Misc and Essential actions use immutable PendingIntents to a `TagActionReceiver`.
 - Refresh Glance widgets after every insert, tag, edit, delete or budget change, and from a daily WorkManager job just after midnight.
+- Parser templates exist only for HDFC, SBI and ICICI; a new bank needs real samples in docs/sample-sms.txt first.
+- smsHash is the SHA-256 of sender, then a newline character, then body. Never change this once testers install.
+- Parser tests read ../docs/sample-sms.txt; run them with ./gradlew :app:testDebugUnitTest --tests com.example.paisapet.sms.*
