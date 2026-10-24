@@ -40,6 +40,18 @@ class SampleSmsTest {
 
     @Test fun hdfcAutoPaySamplesParse() = checkBank(SampleBank.HDFC_AUTOPAY)
 
+    @Test fun hdfcToAccountSamplesParse() = checkBank(SampleBank.HDFC_TO_ACCOUNT)
+
+    @Test fun hdfcToAccountWording() {
+        val random = Random(7)
+        repeat(50) {
+            val sample = generate(SampleBank.HDFC_TO_ACCOUNT, random, today)
+            assertTrue(sample.payee, sample.payee.matches(Regex("""a/c \*\*\d{4}""")))
+            assertTrue(sample.body.startsWith("HDFC Bank:Rs. "))
+            assertTrue(sample.body.contains(" debited from a/c *4821 on 25/10/26 to ${sample.payee} (UPI Ref No. ${sample.ref})."))
+        }
+    }
+
     @Test fun sbiSamplesParse() = checkBank(SampleBank.SBI)
 
     @Test fun iciciSamplesParse() = checkBank(SampleBank.ICICI)

@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.random.Random
 
-enum class SampleBank { HDFC, HDFC_AUTOPAY, SBI, ICICI }
+enum class SampleBank { HDFC, HDFC_AUTOPAY, HDFC_TO_ACCOUNT, SBI, ICICI }
 
 /** A made-up bank SMS for Simulate SMS, plus what the parser should find in it. */
 data class SampleSms(val sender: String, val body: String, val amountPaise: Long, val ref: String, val payee: String)
@@ -20,8 +20,9 @@ private val SBI_DATE = DateTimeFormatter.ofPattern("ddMMMyy", Locale.ENGLISH)
 private val ICICI_DATE = DateTimeFormatter.ofPattern("dd-MMM-yy", Locale.ENGLISH)
 
 /**
- * A fresh sample in the bank's real wording (docs/sample-sms.txt: HDFC D10, HDFC AutoPay D01, SBI D02/D06,
- * ICICI D03/D04), dated [today], with a random 12-digit ref, a random ₹10.00–₹500.00 amount and a random payee.
+ * A fresh sample in the bank's real wording (docs/sample-sms.txt: HDFC D10, HDFC AutoPay D01, HDFC to a bank
+ * account D11, SBI D02/D06, ICICI D03/D04), dated [today], with a random 12-digit ref, a random ₹10.00–₹500.00
+ * amount and a random payee (for D11, a random "a/c **NNNN").
  */
 fun generate(bank: SampleBank, random: Random, today: LocalDate): SampleSms {
     val amountPaise = random.nextLong(1_000, 50_001)
@@ -62,6 +63,17 @@ fun generate(bank: SampleBank, random: Random, today: LocalDate): SampleSms {
             ref = ref,
             payee = payee,
         )
+        SampleBank.HDFC_TO_ACCOUNT -> {
+            val account = "a/c **" + String.format(Locale.ROOT, "%04d", random.nextInt(10_000))
+            SampleSms(
+                sender = "AD-HDFCBK-S",
+                body = "HDFC Bank:Rs. $amount debited from a/c *4821 on ${today.format(HDFC_DATE)} to $account " +
+                    "(UPI Ref No. $ref). Not you? Call on 18002586161 to report",
+                amountPaise = amountPaise,
+                ref = ref,
+                payee = account,
+            )
+        }
         SampleBank.SBI -> SampleSms(
             sender = "VK-SBIUPI-S",
             body = "Dear UPI user A/C X3190 debited by $amount on date ${today.format(SBI_DATE)} trf to $payee " +

@@ -16,9 +16,9 @@ class SmsFixturesReaderTest {
 
     @Test
     fun counts() {
-        assertEquals(34, blocks.size)
-        assertEquals(14, blocks.count { it.expect == Expect.DEBIT })
-        assertEquals(19, blocks.count { it.expect == Expect.IGNORE })
+        assertEquals(36, blocks.size)
+        assertEquals(15, blocks.count { it.expect == Expect.DEBIT })
+        assertEquals(20, blocks.count { it.expect == Expect.IGNORE })
         assertEquals(1, blocks.count { it.expect == Expect.DUPLICATE })
     }
 

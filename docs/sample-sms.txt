@@ -33,6 +33,7 @@
 #   2. Debit wording differs by bank:
 #        HDFC : "Sent Rs.304.00 from HDFC Bank A/c 4821 To <payee> <date> Ref <12 digits>"
 #               A regular HDFC debit has 'On' before the date and writes the account as A/C *<last4>; an AutoPay one (D01) has neither.
+#               HDFC has three debit wordings: 'Sent Rs.X From HDFC Bank A/C *1234 To <payee> On <date> Ref <12 digits>' (UPI ID or merchant), the AutoPay variant (D01), and 'HDFC Bank:Rs. X debited from a/c *1234 on <date> to a/c **5678 (UPI Ref No. <12 digits>)' (a bank account number; the payee is the printed account).
 #        SBI  : "Dear UPI user A/C X3190 debited by 49.00 on date 28Sep26 trf to <payee> Refno <12 digits>"
 #               (SBI prints the amount WITHOUT Rs/INR/rupee sign)
 #        ICICI: "Acct XX518 debited for Rs 189.00 on 28-Jun-26; <payee> credited. UPI:<12 digits>"
@@ -193,6 +194,19 @@ On 25/10/26
 Ref 534902716384
 Not You?
 Call 18002586161/SMS BLOCK UPI to 7308080808
+---
+
+### D11
+sender: AD-HDFCBK-S
+expect: DEBIT
+amountPaise: 10000
+merchant: a/c **3190
+date: 2026-10-25
+month: 2026-10
+ref: 534902716399
+note: HDFC payment sent to a bank account number. No "Sent" and no "To" word; the payee is the printed account. This one is a transfer to the user's own SBI account (the PRD question on self-transfers is still open).
+body:
+HDFC Bank:Rs. 100.00 debited from a/c *4821 on 25/10/26 to a/c **3190 (UPI Ref No. 534902716399). Not you? Call on 18002586161 to report
 ---
 
 # ============================================================
@@ -451,4 +465,14 @@ synthetic: true
 note: Payment dated 30 Jun but the SMS reached the phone at 00:04 on 1 Jul. Must be filed under June (month of the date in the message), not July.
 body:
 Dear UPI user A/C X3190 debited by 250.00 on date 30Jun26 trf to TEA POST Refno 482950170001 If not u? call-1800111109 for other services-18001234-SBI
+---
+
+### S10
+sender: AD-HDFCBK-S
+expect: IGNORE
+reason: credit-upi
+synthetic: true
+note: Same HDFC wording family, but the money comes IN. Must never be captured.
+body:
+HDFC Bank:Rs. 100.00 credited to a/c *4821 on 25/10/26 from a/c **3190 (UPI Ref No. 534902716400). Not you? Call on 18002586161 to report
 ---

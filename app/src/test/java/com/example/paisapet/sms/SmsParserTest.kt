@@ -171,4 +171,48 @@ class SmsParserTest {
         assertEquals(30400L, debit.amountPaise)
         assertEquals("538204917365", debit.upiRef)
     }
+
+    // HDFC payment to a bank account number (D11)
+
+    private val hdfcToAccount = "HDFC Bank:Rs. 100.00 debited from a/c *4821 on 25/10/26 to a/c **3190 " +
+        "(UPI Ref No. 534902716399). Not you? Call on 18002586161 to report"
+
+    private fun assertToAccount(debit: ParsedDebit, payee: String = "a/c **3190") {
+        assertEquals(10000L, debit.amountPaise)
+        assertEquals(payee, debit.payee)
+        assertEquals("534902716399", debit.upiRef)
+        assertEquals(LocalDate.of(2026, 10, 25), debit.occurredAt.atZone(zone).toLocalDate())
+        assertEquals("2026-10", debit.monthKey)
+    }
+
+    @Test
+    fun hdfcToAccount_fullBody() = assertToAccount(assertDebit(parse(hdfcToAccount)))
+
+    @Test
+    fun hdfcToAccount_allLowercase() = assertToAccount(assertDebit(parse(hdfcToAccount.lowercase())))
+
+    @Test
+    fun hdfcToAccount_lineBreaksBetweenWords() =
+        assertToAccount(assertDebit(parse(hdfcToAccount.replace(" ", "\n"))))
+
+    @Test
+    fun hdfcToAccount_noSpaceAfterRs() =
+        assertToAccount(assertDebit(parse(hdfcToAccount.replace("Rs. 100.00", "Rs.100.00"))))
+
+    @Test
+    fun hdfcToAccount_refNoWithoutDot() =
+        assertToAccount(assertDebit(parse(hdfcToAccount.replace("Ref No. ", "Ref No "))))
+
+    @Test
+    fun hdfcToAccount_creditedWordingIsCredit() {
+        val body = "HDFC Bank:Rs. 100.00 credited to a/c *4821 on 25/10/26 from a/c **3190 " +
+            "(UPI Ref No. 534902716400). Not you? Call on 18002586161 to report"
+        assertIgnored(IgnoreReason.CREDIT_UPI, parse(body))
+    }
+
+    @Test
+    fun hdfcToAccount_elevenDigitRefNotCaptured() {
+        val result = parse(hdfcToAccount.replace("534902716399", "53490271639"))
+        assertTrue("expected Ignored but got $result", result is ParseResult.Ignored)
+    }
 }

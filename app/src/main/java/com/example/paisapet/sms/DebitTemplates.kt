@@ -35,6 +35,17 @@ internal object DebitTemplates {
         amountGroup = 1, payeeGroup = 2, dateGroup = 3, refGroup = 4,
     )
 
+    /**
+     * Payment to a bank account number (D11): "HDFC Bank:Rs. 100.00 debited from a/c *4821 on 25/10/26 to a/c **3190
+     * (UPI Ref No. 534902716399)". The payee is the printed account, "a/c **3190", up to the '('.
+     * The credited wording ("credited to a/c ... from a/c") never matches.
+     */
+    val HDFC_TO_ACCOUNT = DebitTemplate(
+        name = "HDFC to account",
+        pattern = """HDFC\s+Bank\s*:\s*Rs\.?\s*$AMOUNT\s+debited\s+from\s+a/c\s+\S+\s+on\s+(\d{1,2}/\d{1,2}/\d{2})\s+to\s+(a/c\s+[^(]+?)\s*\(\s*UPI\s+Ref\s+No\.?\s*(\d{12})\s*\)""",
+        amountGroup = 1, dateGroup = 2, payeeGroup = 3, refGroup = 4,
+    )
+
     /** "debited by 49.00 on date 28Sep26 trf to Jio Prepaid Rech Refno 704219356618". No Rs/INR. */
     val SBI = DebitTemplate(
         name = "SBI",
@@ -52,5 +63,5 @@ internal object DebitTemplates {
         amountGroup = 1, dateGroup = 2, payeeGroup = 3, refGroup = 4,
     )
 
-    val ALL = listOf(HDFC, SBI, ICICI)
+    val ALL = listOf(HDFC, HDFC_TO_ACCOUNT, SBI, ICICI)
 }
