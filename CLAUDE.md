@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Paisa Pet: an offline, single-activity Android app (Kotlin, Jetpack Compose, Material 3) that reads UPI debit SMS, asks "Misc or Essential?" with a one-tap notification, and shows the remaining monthly misc budget through a pet called Buddy (home screen and Glance widgets). No backend, no login.
 
-`docs/prd.md` is the spec and the source of truth. Requirements have IDs (US-xx, FR-xx, NFR-xx) and the work is split into build phases (see "Build phases for Claude Code" in the PRD). Don't read the whole PRD at once. Grep for the `## ` headings and read only the sections you need. Screen mockups are the `docs/*.png` files. **Where a screenshot and the PRD disagree, the PRD wins.** Each screen's section in "Screens and UI spec" lists its changes.
+`docs/prd.md` is the spec and the source of truth. Requirements have IDs (US-xx, FR-xx, NFR-xx) and the work is split into build phases (see "Build phases for Claude Code" in the PRD). Don't read the whole PRD at once. Grep for the `## ` headings and read only the sections you need. Screen mockups are in `docs/screens/` (`docs/screens/*.png`). `05-home-dark.png` is for the later dark theme (P1); ignore it until I ask. **Where a screenshot and the PRD disagree, the PRD wins.** Each screen's section in "Screens and UI spec" lists its changes.
 
 The package is `com.example.paisapet`.
 
@@ -22,8 +22,8 @@ The package is `com.example.paisapet`.
 ## Current status
 
 - Phase 0: project created, runs on phone, repo on GitHub. Done.
+- Phase 0.5: screenshots moved to docs/screens/, minSdk set to 26, PRD tidy-ups. Done.
 - Phase 1: not started.
-- To fix in Phase 1: PRD says minSdk 26 but `app/build.gradle.kts` has 24. Set it to 26, then delete this line.
 
 Update this section at the end of every phase.
 

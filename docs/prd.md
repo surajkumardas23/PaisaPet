@@ -417,7 +417,7 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Area    | Case                                                                                                   | Expected behaviour                                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
 | Capture | Bank sends no SMS for small UPI payments (e.g. some banks skip debits under ₹100) or UPI Lite payments | Not captured; user adds them manually (FR-14). Mentioned in S8 helper text and tester guide                         |
-| Capture | SMS arrives while the phone is off or in airplane mode                                                 | Captured when it arrives; time = SMS timestamp                                                                      |
+| Capture | SMS arrives while the phone is off or in airplane mode                                                 | Captured when it arrives; the transaction date comes from the message, time of day from the SMS timestamp           |
 | Capture | Brand phones (Xiaomi, Oppo, Vivo, Realme) block background apps                                        | Tester guide asks to allow Autostart and set battery to "No restrictions". Permissions screen links to app settings |
 | Capture | Multi-part (long) SMS                                                                                  | Parts joined before parsing                                                                                         |
 | Capture | Dual SIM or several banks                                                                              | All handled; bank stored per transaction                                                                            |
@@ -545,7 +545,7 @@ Build in 9 phases, riskiest first, so a tester build exists by Sunday afternoon 
 | 5\. Main screens       | S4/S5 Home, S6 Transactions, S7 Edit, S8 Add, S9 Settings with CSV export                                       | FR-11 to FR-14, FR-18, FR-23 | Device checklist items for these screens pass                             | Sun 25, early afternoon |
 | 6\. Tester build       | Signed release APK, tester guide, send to 4–5 users                                                             | —                          | Two testers have it installed and capturing                               | Sun 25, afternoon       |
 | 7\. Widgets and Buddy  | Glance widgets, Buddy art for 5 states, limit alerts                                                            | FR-15, FR-17               | Widgets and alerts pass the checklist; testers get v0.2                   | Sun 25, night           |
-| 8\. Iterate and submit | Fix top feedback, P1 items if time (FR-21, FR-22, FR-23), final APK, demo video, update this PRD with learnings | —                          | Submission sent                                                           | Mon 26 Oct, by 11:30 PM |
+| 8\. Iterate and submit | Fix top feedback, P1 items if time (FR-21, FR-22), final APK, demo video, update this PRD with learnings        | —                          | Submission sent                                                           | Mon 26 Oct, by 11:30 PM |
 
 **Working with Claude Code**
 
