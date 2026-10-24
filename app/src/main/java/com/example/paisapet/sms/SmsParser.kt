@@ -13,7 +13,8 @@ import java.time.ZoneId
 object SmsParser {
 
     private const val MAX_PAYEE_LENGTH = 40
-    private const val NO_PAYEE = "UPI payment"
+    /** Payee used when the message names none. */
+    const val NO_PAYEE = "UPI payment"
 
     private val UPI_WORD = word("UPI")
     private val LINE_BREAK = Regex("""\r\n|\r|\n""")
