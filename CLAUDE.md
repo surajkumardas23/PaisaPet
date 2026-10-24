@@ -24,7 +24,7 @@ The package is `com.example.paisapet`.
 - Phase 0: project created, runs on phone, repo on GitHub. Done.
 - Phase 0.5: screenshots moved to docs/screens/, minSdk set to 26, PRD tidy-ups. Done.
 - Phase 1: SMS parser, duplicate rules and fixture tests in com.example.paisapet.sms. 95 tests green. Done.
-- Phase 2: IN PROGRESS. Done (steps 1-4): Room, DataStore and KSP dependencies, enums, month keys, budget maths and Buddy state (69 budget tests green), Room entities, DAOs and database (schema in app/schemas). Next: step 5 of docs/phase2-plan.md.
+- Phase 2: IN PROGRESS. Done (steps 1-6): dependencies, enums, month keys, budget maths and Buddy state, Room entities/DAOs/database, SettingsStore, repository (JVM-tested mappers). Next: step 7 of docs/phase2-plan.md (all phone tests in one run).
 
 Update this section at the end of every phase.
 

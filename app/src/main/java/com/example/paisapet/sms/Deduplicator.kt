@@ -6,7 +6,7 @@ import java.util.Locale
 /** FR-06 duplicate rules as a pure function. Phase 2 feeds it the candidate rows from Room. */
 object Deduplicator {
 
-    private val WINDOW: Duration = Duration.ofSeconds(120)
+    val WINDOW: Duration = Duration.ofSeconds(120)
 
     fun isDuplicate(candidate: ParsedDebit, existing: List<ParsedDebit>): Boolean =
         existing.any { isSamePayment(candidate, it) }
