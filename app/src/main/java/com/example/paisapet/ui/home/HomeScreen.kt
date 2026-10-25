@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -42,9 +42,10 @@ import com.example.paisapet.ui.buddy.BuddyPlaceholder
 import com.example.paisapet.ui.buddy.buddyColor
 import com.example.paisapet.ui.buddy.buddyTint
 import com.example.paisapet.ui.common.MonthDropdown
+import com.example.paisapet.ui.common.PastMonthBar
 import com.example.paisapet.ui.common.PaymentRow
+import com.example.paisapet.ui.common.ScreenTitle
 import com.example.paisapet.ui.theme.CardWhite
-import com.example.paisapet.ui.theme.HelperPill
 import com.example.paisapet.ui.theme.InkSecondary
 import com.example.paisapet.ui.theme.MintText
 import com.example.paisapet.ui.theme.OverBudgetRed
@@ -67,16 +68,18 @@ fun HomeScreen(
     onRowClick: (id: Long) -> Unit,
     onSetBudget: () -> Unit,
     contentPadding: PaddingValues,
+    /** Kept by the shell so the position survives switching tabs. */
+    scrollState: ScrollState,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(contentPadding)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Header()
+        ScreenTitle("Home")
         Row(verticalAlignment = Alignment.CenterVertically) {
             MonthDropdown(model.monthKey, monthOptions, currentKey, onSelectMonth)
             Spacer(Modifier.weight(1f))
@@ -106,36 +109,6 @@ fun HomeScreen(
             }
         }
         Spacer(Modifier.height(88.dp)) // room above the "+ Add expense" button
-    }
-}
-
-@Composable
-private fun Header() {
-    Column(Modifier.padding(top = 8.dp)) {
-        Text("Paisa Pet", style = MaterialTheme.typography.labelLarge, color = InkSecondary)
-        Text("Home", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun PastMonthBar(backLabel: String, onBack: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(shape = CircleShape, color = HelperPill) {
-            Text(
-                "Past month · view only",
-                style = MaterialTheme.typography.labelLarge,
-                color = InkSecondary,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
-        Surface(onClick = onBack, shape = CircleShape, color = SmsTile) {
-            Text(
-                backLabel,
-                style = MaterialTheme.typography.labelLarge,
-                color = SmsIcon,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
     }
 }
 

@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +21,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +52,8 @@ import com.example.paisapet.nav.toSaveable
 import com.example.paisapet.ui.common.rememberToday
 import com.example.paisapet.ui.home.HomeScreen
 import com.example.paisapet.ui.home.buildHomeModel
+import com.example.paisapet.ui.transactions.TransactionsScreen
+import com.example.paisapet.ui.transactions.buildTransactionsModel
 import com.example.paisapet.ui.theme.CardWhite
 import com.example.paisapet.ui.theme.InkSecondary
 import java.time.YearMonth
@@ -75,6 +79,16 @@ fun MainShell(container: AppContainer) {
     val monthKey = effectiveMonth(nav.monthKey, options, currentKey)
     // The current month is kept as null so it keeps following the clock after midnight on the 1st.
     val selectMonth: (String) -> Unit = { key -> nav = nav.copy(monthKey = key.takeUnless { it == currentKey }) }
+
+    // Held here, not in the tabs, so each tab keeps its scroll position when the other is shown.
+    val homeScroll = rememberScrollState()
+    val transactionsList = rememberLazyListState()
+    // A new filter or month starts the list at the top. requestScrollToItem also works while the tab is hidden.
+    LaunchedEffect(nav.filter, monthKey) { transactionsList.requestScrollToItem(0) }
+
+    // One month view for both tabs: the same (month, day) is collected once.
+    val view by remember(monthKey, today) { container.repository.observeMonth(monthKey, today) }
+        .collectAsStateWithLifecycle(initialValue = null)
 
     when {
         nav.debugOpen && DebugTools.isAvailable -> PushedPage(title = DebugTools.TITLE, onBack = { nav = nav.copy(debugOpen = false) }) {
@@ -104,29 +118,32 @@ fun MainShell(container: AppContainer) {
             // "+ Add expense" goes here in step 7.
             floatingActionButton = {},
         ) { padding ->
-            when (nav.tab) {
-                Tab.HOME -> {
-                    val view by remember(monthKey, today) { container.repository.observeMonth(monthKey, today) }
-                        .collectAsStateWithLifecycle(initialValue = null)
-                    val loaded = view
-                    if (loaded == null) {
-                        Box(Modifier.fillMaxSize().padding(padding))
-                    } else {
-                        HomeScreen(
-                            model = buildHomeModel(loaded, monthKey, currentKey, today, zone),
-                            monthOptions = options,
-                            currentKey = currentKey,
-                            onSelectMonth = selectMonth,
-                            onOpenSettings = { nav = nav.copy(settingsOpen = true) },
-                            onTagNow = { nav = nav.tagNow() },
-                            onSeeAll = { nav = nav.seeAll() },
-                            onRowClick = { }, // Edit (S7) comes in step 6.
-                            onSetBudget = { }, // The budget sheet comes in step 9.
-                            contentPadding = padding,
-                        )
-                    }
-                }
-                Tab.TRANSACTIONS -> ComingNext(padding)
+            val loaded = view
+            when {
+                loaded == null -> Box(Modifier.fillMaxSize().padding(padding))
+                nav.tab == Tab.HOME -> HomeScreen(
+                    model = buildHomeModel(loaded, monthKey, currentKey, today, zone),
+                    monthOptions = options,
+                    currentKey = currentKey,
+                    onSelectMonth = selectMonth,
+                    onOpenSettings = { nav = nav.copy(settingsOpen = true) },
+                    onTagNow = { nav = nav.tagNow() },
+                    onSeeAll = { nav = nav.seeAll() },
+                    onRowClick = { }, // Edit (S7) comes in step 6.
+                    onSetBudget = { }, // The budget sheet comes in step 9.
+                    contentPadding = padding,
+                    scrollState = homeScroll,
+                )
+                else -> TransactionsScreen(
+                    model = buildTransactionsModel(loaded, nav.filter, monthKey, currentKey, today, zone),
+                    monthOptions = options,
+                    currentKey = currentKey,
+                    onSelectMonth = selectMonth,
+                    onSelectFilter = { nav = nav.copy(filter = it) },
+                    onRowClick = { }, // Edit (S7) comes in step 6.
+                    contentPadding = padding,
+                    listState = transactionsList,
+                )
             }
         }
     }
@@ -171,12 +188,5 @@ private fun SettingsPlaceholder(onOpenDebug: () -> Unit) {
         } else {
             Text("More settings coming soon", style = MaterialTheme.typography.bodyLarge, color = InkSecondary)
         }
-    }
-}
-
-@Composable
-private fun ComingNext(padding: PaddingValues) {
-    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-        Text("Coming next", style = MaterialTheme.typography.titleMedium, color = InkSecondary)
     }
 }
