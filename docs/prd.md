@@ -235,7 +235,7 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 - **FR-04 Detect UPI debits (P0).** Given a UPI debit SMS arrives, when the app is closed or the phone locked, then a transaction is saved within 5 seconds. Non-UPI, credit, OTP, failed and promotional messages create nothing. AutoPay payments that report money sent are captured. Rules in "SMS capture and parsing rules".
 - **FR-05 Extract fields (P0).** Each saved transaction has amount (exact to the paisa), payee (name or UPI ID, or "UPI payment" if none), UPI reference if present, bank sender ID and the transaction date (from the message, falling back to SMS time).
 - **FR-06 No duplicates (P0).** The same payment arriving twice is saved once: the same message (same sender and body), or the same UPI reference. If both have a reference and the references differ, they are different payments, even with the same amount, payee and time. Only when a reference is missing: same amount and same payee within 2 minutes.
-- **FR-07 Tag prompt (P0).** Each new SMS transaction posts a notification "₹240 paid to Swiggy — Misc or Essential?" with buttons **Misc** and **Essential**. Tapping a button saves the category without opening the app and updates Home and widgets. Tapping the body opens S7 for that transaction. Swiping it away leaves it Not tagged.
+- **FR-07 Tag prompt (P0).** Each new SMS transaction posts a notification with the title "₹240 paid to Swiggy" and the text "Misc or Essential spend? Tap to tag." with buttons **Misc** and **Essential**. Tapping a button saves the category without opening the app and updates Home and widgets. Tapping the body opens S7 for that transaction. Swiping it away leaves it Not tagged.
 - **FR-08 Untagged counts as Misc (P0).** Not tagged transactions are included in misc spent and shown with a Not tagged chip until the user picks a category.
 
 **Budget, Buddy and screens**
@@ -250,7 +250,7 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 - **FR-16 Month reset (P0).** On the 1st, the new month starts at 0 spent with the default budget; Home, widgets and alerts use the new month. Past transactions are kept.
 - **FR-18 CSV export (P0).** Exports all transactions with the columns in "Data model" through the Android share sheet. File name paisa-pet-YYYY-MM-DD.csv. Works offline.
 - **FR-19 Simulate SMS (P0, debug only).** Settings › Simulate SMS lets the builder paste a message body and sender ID and run it through the full pipeline (parse → save → notify). Absent in release builds.
-- **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication.
+- **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication. Cloud backup is switched off (allowBackup=false), so payment data never leaves the phone.
 - **FR-23 Past months (P0).** The month dropdown on Home and Transactions lists months with data; past months are read-only views with that month's budget.
 
 **Alerts and P1 extras**
@@ -266,14 +266,14 @@ An SMS becomes a transaction only if it is a UPI payment AND a debit AND not on 
 
 1. SMS_RECEIVED broadcast arrives (manifest-registered receiver, works with the app closed). Join multi-part messages from the same sender into one body.
 2. Quick reject: sender is a phone number (10+ digits, personal SMS) → drop. Bank senders are alphanumeric IDs such as VM-HDFCBK or AX-SBIUPI.
-3. Classify with the rules below. Not a UPI debit → drop silently (debug builds log the reason).
+3. Classify with the rules below. Not a UPI debit → drop silently (the debug Simulate SMS screen shows the reason; nothing is ever logged).
 4. Extract fields. No amount found → drop.
 5. De-duplicate. Duplicate → drop.
 6. Save as Not tagged with source = SMS, then post the tag prompt (FR-07) and refresh widgets.
 
 Work after step 1 runs off the main thread (goAsync() plus a coroutine, or an expedited WorkManager job).
 
-How it is built: the parser uses one template per bank format (HDFC, SBI and ICICI at launch). A message that matches no template is ignored. The table below says what must hold; where it differs from the fixtures in docs/sample-sms.txt, the fixtures win. To support a new bank, first add real redacted samples to docs/sample-sms.txt, then add a template.
+How it is built: the parser uses one template per bank wording. HDFC has three: the regular 'Sent Rs.X From HDFC Bank A/C *1234 To <payee> On <date> Ref <12 digits>' (UPI ID or merchant), the AutoPay variant, and the payment to a bank account 'HDFC Bank:Rs. X debited from a/c *1234 on <date> to a/c **5678 (UPI Ref No. <12 digits>)'. SBI and ICICI have one each. If no template matches, a guarded generic fallback captures the message only when ALL hold: the sender looks like a bank header; the word UPI and exactly one 12-digit reference are present; an explicit debit phrase (debited from/by/for/with, Sent Rs) is present; a readable amount is present; and none of credited, received, refund, reversed, card, ATM, NEFT, IMPS, RTGS, OTP, failed, declined, pending appear. A fallback capture uses the payee 'UPI payment'. Anything else is ignored: a miss is always preferred to a wrong capture. The table below says what must hold; where it differs from the fixtures in docs/sample-sms.txt, the fixtures win. To support a new bank wording, first add real redacted samples to docs/sample-sms.txt, then a template.
 
 **Classification rules** (case-insensitive)
 
@@ -292,7 +292,7 @@ UPI AutoPay (mandate) payments: a message that reports money actually sent (for 
 **Field extraction**
 
 - **Amount:** first match of (?:Rs\\.?|INR|₹)\\s?(\[\\d,\]+(?:\\.\\d{1,2})?) that is NOT preceded within 12 characters by "Bal", "balance", "Avl" or "Available". Store in paise as a whole number. SBI messages print the amount with no Rs or INR (for example 'debited by 49.00'), so also accept the number right after 'debited by'.
-- **Payee:** text after "to", "paid to", "trf to" or "VPA" up to the next keyword (on, Ref, UPI, date) or full stop; else the first UPI ID in the body; else "UPI payment". Trim and cap at 40 characters. ICICI: the text between ';' and ' credited'. HDFC: the text after 'To' up to the line break or date.
+- **Payee:** text after "to", "paid to", "trf to" or "VPA" up to the next keyword (on, Ref, UPI, date) or full stop; else the first UPI ID in the body; else "UPI payment". Trim and cap at 40 characters. ICICI: the text between ';' and ' credited'. HDFC: the text after 'To' up to the line break or date. HDFC: an optional word 'On' before the date is not part of the payee. An HDFC payment to a bank account prints the account (for example a/c **0875) as the payee.
 - **UPI reference:** 12-digit number after Ref, Ref No, Refno, RRN, UPI Ref or UPI:, if present.
 - **Transaction date (occurredAt):** the date printed in the message, read day-first as the bank writes it (03/10/26, 28Sep26, 28-Jun-26, 21-10-26). Time of day comes from the SMS received time. If no date can be read, use the SMS received time. A transaction belongs to the month of this date in the phone's local time zone.
 - **Bank:** the sender ID with its 2-3 letter prefix and one-letter suffix removed (AD-HDFCBK-S becomes HDFCBK).
@@ -305,7 +305,7 @@ UPI AutoPay (mandate) payments: a message that reports money actually sent (for 
 
 **Fixtures (required before coding Phase 1)**
 
-Bank formats differ and change, so the parser is built and unit-tested against real messages, not guesses. Collect 15–20 real UPI debit SMS from at least 4 banks (HDFC, SBI, ICICI, Axis or Kotak), plus 5–10 messages that must be rejected (credit, OTP, card spend, failed, collect request). Mask account numbers and save them in docs/sample-sms.txt with an expected result for each line. Status after Phase 1: 13 debit fixtures from 3 banks (HDFC, SBI, ICICI) and 20 ignore or duplicate fixtures; Axis and Kotak need real samples.
+Bank formats differ and change, so the parser is built and unit-tested against real messages, not guesses. Collect 15–20 real UPI debit SMS from at least 4 banks (HDFC, SBI, ICICI, Axis or Kotak), plus 5–10 messages that must be rejected (credit, OTP, card spend, failed, collect request). Mask account numbers and save them in docs/sample-sms.txt with an expected result for each line. Status after Phase 3: 36 fixture blocks: 15 debits (HDFC in three wordings, SBI, ICICI and made-up edge cases), 20 ignore cases and 1 duplicate. Axis, Kotak and other banks need real samples from testers.
 
 ## Budget logic, Buddy states and alerts
 
@@ -360,6 +360,9 @@ Two notification channels and two Glance widgets; every tag, edit or budget chan
 - Notification ID = transaction ID, so several prompts can coexist and each acts on its own payment.
 - Body tap opens S7 for that transaction. Swipe away = stays Not tagged. Prompts are not repeated.
 - If notifications are off, the transaction still saves and appears as Not tagged.
+- On the lock screen the notification shows 'New UPI payment · Unlock to tag' (private visibility); the amount, payee and buttons show after unlock.
+- When the payee is 'UPI payment', the title is '₹240 UPI payment'.
+- The body tap opens the Edit screen (S7) for that payment; until S7 exists it just opens the app.
 
 **Confirmation with Undo (P1, FR-21)**
 
@@ -431,6 +434,10 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Capture | Payment made before install or before SMS permission                                                   | Not captured (no back-fill in MVP); add manually                                                                    |
 | Capture | Mandate pre-debit notice, then the actual debit                                                        | Only the 'Sent' debit message is captured; the notice is dropped.                                                   |
 | Capture | A payment is added by hand and then its SMS arrives                                                    | Both are saved, because manual entries are not part of the duplicate check; the user deletes one                    |
+| Capture | The app was force-stopped, or freshly installed and never opened                                       | Android delivers no SMS to the app until it is opened once. Swiping it away from Recents is fine. The tester guide says so. |
+| Capture | Android blocks the SMS permission for an APK installed from a browser or file manager (Restricted setting) | Tester guide: App info, the three-dot menu, Allow restricted settings, then allow SMS.                           |
+| Capture | A bank wording the parser does not know                                                                | Not captured, or captured by the guarded fallback with the payee "UPI payment". Testers add missed payments with + Add expense and send the masked SMS so a template can be added. |
+| Capture | A payment to the user's own account (self-transfer)                                                    | Captured like any other; the user tags it Essential or deletes it.                                                  |
 | Tagging | User never taps the notification                                                                       | Stays Not tagged, counts as Misc, shown on Home card                                                                |
 | Tagging | Several prompts pending                                                                                | Each acts on its own transaction ID                                                                                 |
 | Tagging | Notification permission off                                                                            | Transactions still saved; Home shows untagged card                                                                  |
@@ -481,7 +488,7 @@ A single native Android app in Kotlin with no backend; the only infrastructure i
 
 - Release keystore created once in Android Studio (Build › Generate Signed App Bundle or APK). Keystore and passwords are never committed.
 - Signed release APK uploaded to Google Drive (link set to "Anyone with the link") or GitHub Releases.
-- Tester guide (one page): enable "Install unknown apps" for the browser or Drive, expect a Play Protect warning, allow SMS and notifications, allow Autostart on Xiaomi/Oppo/Vivo, add the widget.
+- Tester guide (one page): enable "Install unknown apps" for the browser or Drive, expect a Play Protect warning, allow SMS and notifications, allow Autostart on Xiaomi/Oppo/Vivo, add the widget; open the app once after installing (Android sends no SMS to a newly installed app), never Force stop it, set the battery setting for Paisa Pet to Unrestricted, and use Allow restricted settings if the SMS permission is greyed out. If a payment is not captured, add it with + Add expense and send the SMS with the digits masked.
 - Play Store is out of scope; Google restricts apps that read SMS.
 
 **External dependencies:** none at runtime. Design source is Google Stitch (screenshots only).
@@ -571,3 +578,4 @@ Two questions block early phases; the rest have a default the build follows unle
 | Keep the pet's name "Buddy" inside Paisa Pet?                                    | Owner / design | No      | Yes                                       |
 | Should a refund SMS reduce misc spend?                                           | Owner          | No      | No; user edits the original               |
 | Buddy art: export from Stitch or redraw as simple shapes?                        | Design         | Phase 7 | Simple Compose shapes in state colours    |
+| Should payments to your own account (self-transfers) count against the misc budget? | Owner       | No      | Yes, counted; the user tags it Essential or deletes it |

@@ -25,7 +25,8 @@ The package is `com.example.paisapet`.
 - Phase 0.5: screenshots moved to docs/screens/, minSdk set to 26, PRD tidy-ups. Done.
 - Phase 1: SMS parser, duplicate rules and fixture tests in com.example.paisapet.sms. 95 tests green. Done.
 - Phase 2: Room database, repository, SettingsStore, budget maths and Buddy state. 179 JVM tests and 37 phone tests green. Done.
-- Phase 3: not started.
+- Phase 3: SMS receiver, tag notification and tag actions, guarded fallback and debug Simulate SMS. 337 JVM tests green; verified on my phone with real HDFC payments. Done.
+- Phase 4: not started.
 
 Update this section at the end of every phase.
 
@@ -72,3 +73,8 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - connectedAndroidTest uninstalls the app from the phone and wipes its data: never run it on a phone holding real payment data. Room tests run on the phone: ./gradlew connectedAndroidTest.
 - Database changes: bump the Room version, write a real Migration, commit the new schema JSON in app/schemas. Never use destructive migration.
 - Parsed money, months and Buddy state come from the pure functions in budget/ (month filed by occurredAt); do not recompute them in UI code.
+- Receivers are thin: SmsReceiver and TagActionReceiver use goAsync() on appScope, catch Throwable and call finish() in finally. The logic is in SmsPipeline and TagActionHandler (pure Kotlin, tested).
+- Parser order: sender check, hard rejects, bank templates, guarded generic fallback (viaFallback is not stored), explain the ignore. For a new bank wording, add a real redacted fixture to docs/sample-sms.txt first, then a template.
+- Simulate SMS and ReceiverTrace live only in src/debug; src/release has stubs. After changes, check that the release APK has no SimulateSms or SampleSms classes. The debug screen is MainActivity for now; Phase 5 replaces it.
+- The notification body tap passes TagPromptNotifier.EXTRA_OPEN_TRANSACTION_ID to MainActivity, which ignores it until Phase 5, when it must open the Edit screen (S7) for that payment.
+- allowBackup is false on purpose (data stays on the phone). Never log or store an SMS body or sender, and never put them in notification extras.
