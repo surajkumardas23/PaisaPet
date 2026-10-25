@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -196,5 +197,92 @@ class TransactionDaoTest {
 
     @Test fun updateCategory_missingIdReturns0() = runBlocking {
         assertEquals(0, dao.updateCategory(12345L, Category.MISC, TagSource.APP, 1L, 1L))
+    }
+
+    // Phase 5 queries
+
+    @Test fun observeByMonth_equalTimes_newestIdFirst() = runBlocking {
+        val first = dao.insert(row("a", occurredAt = t0))
+        val second = dao.insert(row("b", occurredAt = t0))
+        val third = dao.insert(row("c", occurredAt = t0))
+        assertEquals(listOf(third, second, first), dao.observeByMonth("2026-10").first().map { it.id })
+    }
+
+    @Test fun observeById_emitsRowThenNullAfterDelete() = runBlocking<Unit> {
+        val id = dao.insert(row("h1"))
+        val scope = CoroutineScope(Dispatchers.Default)
+        val emissions = Channel<TransactionEntity?>(Channel.UNLIMITED)
+        scope.launch { dao.observeById(id).collect { emissions.send(it) } }
+        try {
+            emissions.awaitMatching { it?.id == id }
+            assertEquals(1, dao.deleteById(id))
+            emissions.awaitMatching { it == null }
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test fun getById_missingIsNull() = runBlocking {
+        val id = dao.insert(row("h1"))
+        assertEquals("h1", dao.getById(id)?.smsHash)
+        assertNull(dao.getById(id + 100))
+    }
+
+    @Test fun observeMonthKeys_distinctNewestFirst() = runBlocking {
+        dao.insert(row("o1", monthKey = "2026-10"))
+        dao.insert(row("s1", monthKey = "2026-09"))
+        dao.insert(row("o2", monthKey = "2026-10"))
+        dao.insert(row("d1", monthKey = "2025-12"))
+        dao.insert(row("n1", monthKey = "2026-11"))
+        assertEquals(listOf("2026-11", "2026-10", "2026-09", "2025-12"), dao.observeMonthKeys().first())
+    }
+
+    @Test fun observeMonthKeys_emptyTable() = runBlocking {
+        assertEquals(emptyList<String>(), dao.observeMonthKeys().first())
+    }
+
+    @Test fun getAll_oldestFirstThenId() = runBlocking {
+        dao.insert(row("newest", occurredAt = t0 + 60_000))
+        val tieA = dao.insert(row("tieA", occurredAt = t0))
+        val tieB = dao.insert(row("tieB", occurredAt = t0))
+        dao.insert(row("oldest", occurredAt = istMillis(2026, 9, 2, 9, 0), monthKey = "2026-09"))
+        val all = dao.getAll()
+        assertEquals(listOf("oldest", "tieA", "tieB", "newest"), all.map { it.smsHash })
+        assertTrue(tieA < tieB)
+    }
+
+    @Test fun deleteById_returns1Then0ForMissing() = runBlocking {
+        val id = dao.insert(row("h1"))
+        assertEquals(1, dao.deleteById(id))
+        assertEquals(0, dao.deleteById(id))
+        assertEquals(0, dao.deleteById(98765L))
+        assertTrue(dao.observeByMonth("2026-10").first().isEmpty())
+    }
+
+    @Test fun updateManual_smsRowTouches0Rows() = runBlocking {
+        val id = dao.insert(row("h1"))
+        assertEquals(0, dao.updateManual(id, 1L, "Changed", Category.MISC, TagSource.APP, 5L, 5L))
+        val unchanged = dao.getById(id)!!
+        assertEquals(14900L, unchanged.amountPaise)
+        assertEquals("ZEPTO", unchanged.payee)
+        assertEquals(Category.UNTAGGED, unchanged.category)
+    }
+
+    @Test fun updateManual_manualRowChangesFieldsNotTimeOrMonth() = runBlocking {
+        val id = dao.insert(row(null, source = Source.MANUAL))
+        assertEquals(1, dao.updateManual(id, 2_500L, "Chai", Category.ESSENTIAL, TagSource.APP, 7L, 8L))
+        val updated = dao.getById(id)!!
+        assertEquals(2_500L, updated.amountPaise)
+        assertEquals("Chai", updated.payee)
+        assertEquals(Category.ESSENTIAL, updated.category)
+        assertEquals(TagSource.APP, updated.tagSource)
+        assertEquals(7L, updated.taggedAt)
+        assertEquals(8L, updated.updatedAt)
+        assertEquals(t0, updated.occurredAt)
+        assertEquals("2026-10", updated.monthKey)
+    }
+
+    @Test fun updateManual_missingIdTouches0Rows() = runBlocking {
+        assertEquals(0, dao.updateManual(12345L, 1L, "X", Category.MISC, null, null, 1L))
     }
 }

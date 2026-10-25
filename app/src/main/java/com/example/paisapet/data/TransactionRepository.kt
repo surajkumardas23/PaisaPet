@@ -10,7 +10,10 @@ import com.example.paisapet.data.db.MonthBudgetEntity
 import com.example.paisapet.data.db.PaisaPetDatabase
 import com.example.paisapet.data.db.TransactionEntity
 import com.example.paisapet.data.settings.SettingsStore
+import com.example.paisapet.edit.ManualExpense
+import com.example.paisapet.edit.PaymentStore
 import com.example.paisapet.model.Category
+import com.example.paisapet.model.Source
 import com.example.paisapet.model.TagSource
 import com.example.paisapet.sms.Deduplicator
 import com.example.paisapet.sms.ParsedDebit
@@ -31,7 +34,7 @@ class TransactionRepository(
     private val db: PaisaPetDatabase,
     private val settings: SettingsStore,
     private val clock: Clock,
-) {
+) : PaymentStore {
     private val transactionDao = db.transactionDao()
     private val monthBudgetDao = db.monthBudgetDao()
 
@@ -72,7 +75,7 @@ class TransactionRepository(
      * MISC and ESSENTIAL record [tagSource] and the tag time; UNTAGGED (Undo) clears both.
      * Never moves the row to another month. Returns false if [id] no longer exists.
      */
-    suspend fun setCategory(id: Long, category: Category, tagSource: TagSource): Boolean {
+    override suspend fun setCategory(id: Long, category: Category, tagSource: TagSource): Boolean {
         val now = clock.millis()
         val rows = when (category) {
             Category.MISC, Category.ESSENTIAL -> transactionDao.updateCategory(id, category, tagSource, now, now)
@@ -80,6 +83,74 @@ class TransactionRepository(
         }
         return rows > 0
     }
+
+    /**
+     * Saves a payment added by hand (FR-14): no smsHash, so it is never part of the duplicate check.
+     * Creates the month's budget row from the default like [saveParsedDebit]. Posts no notification.
+     */
+    override suspend fun addManual(expense: ManualExpense): Long {
+        require(expense.amountPaise > 0) { "Amount must be > 0 paise, was ${expense.amountPaise}" }
+        // Read before the transaction so the write lock is not held while DataStore does I/O.
+        val defaultBudget = settings.defaultBudgetPaise.first()
+        return db.withTransaction {
+            val now = clock.millis()
+            val monthKey = monthKeyOf(expense.occurredAt, clock.zone)
+            val id = transactionDao.insert(
+                TransactionEntity(
+                    amountPaise = expense.amountPaise,
+                    payee = expense.payee,
+                    upiRef = null,
+                    bank = null,
+                    occurredAt = expense.occurredAt.toEpochMilli(),
+                    monthKey = monthKey,
+                    category = expense.category,
+                    source = Source.MANUAL,
+                    tagSource = TagSource.APP,
+                    taggedAt = now,
+                    smsHash = null,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+            if (defaultBudget != null) monthBudgetDao.insertIfMissing(MonthBudgetEntity(monthKey, defaultBudget))
+            id
+        }
+    }
+
+    /**
+     * Manual rows only. occurredAt and monthKey never change. A new category records APP and the time;
+     * an unchanged one keeps the old tagSource and taggedAt. Returns false if [id] is missing or not manual.
+     */
+    override suspend fun updateManual(id: Long, amountPaise: Long, payee: String, category: Category): Boolean {
+        require(amountPaise > 0) { "Amount must be > 0 paise, was $amountPaise" }
+        return db.withTransaction {
+            val row = transactionDao.getById(id)
+            if (row == null || row.source != Source.MANUAL) return@withTransaction false
+            val now = clock.millis()
+            val changed = row.category != category
+            transactionDao.updateManual(
+                id = id,
+                amountPaise = amountPaise,
+                payee = payee,
+                category = category,
+                tagSource = if (changed) TagSource.APP else row.tagSource,
+                taggedAt = if (changed) now else row.taggedAt,
+                updatedAt = now,
+            ) > 0
+        }
+    }
+
+    /** Returns false if [id] no longer exists. */
+    override suspend fun delete(id: Long): Boolean = transactionDao.deleteById(id) > 0
+
+    /** Emits null once the payment is deleted. */
+    fun observeTransaction(id: Long): Flow<TransactionEntity?> = transactionDao.observeById(id)
+
+    /** Months with at least one payment, newest first (FR-23). */
+    fun observeMonthsWithData(): Flow<List<String>> = transactionDao.observeMonthKeys()
+
+    /** Every payment, oldest first, for the CSV export (FR-18). */
+    suspend fun allForExport(): List<TransactionEntity> = transactionDao.getAll()
 
     /** The month's rows (newest first) and its summary; the summary is null when there is no budget at all. */
     fun observeMonth(monthKey: String, today: LocalDate): Flow<MonthView> = combine(

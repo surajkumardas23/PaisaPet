@@ -10,6 +10,8 @@ import com.example.paisapet.data.db.MonthBudgetEntity
 import com.example.paisapet.data.db.PaisaPetDatabase
 import com.example.paisapet.data.db.TransactionEntity
 import com.example.paisapet.data.settings.SettingsStore
+import com.example.paisapet.edit.ManualExpense
+import com.example.paisapet.edit.PaymentStore
 import com.example.paisapet.model.Category
 import com.example.paisapet.model.Source
 import com.example.paisapet.model.TagSource
@@ -318,5 +320,169 @@ class TransactionRepositoryTest {
         val view = repo.observeMonth("2026-10", today).first()
         assertEquals(1, view.transactions.size)
         assertNull(view.summary)
+    }
+
+    // addManual (clock is 20 Oct 2026, IST)
+
+    private fun expense(
+        amountPaise: Long = 20_00,
+        payee: String = "Chai stall",
+        category: Category = Category.MISC,
+        occurredAt: Instant = istAt(2026, 10, 20, 8, 30),
+    ) = ManualExpense(amountPaise, payee, category, occurredAt)
+
+    @Test fun addManual_savesManualFields() = runBlocking {
+        val id = repo.addManual(expense(category = Category.ESSENTIAL))
+        val row = rows().single()
+        assertEquals(id, row.id)
+        assertEquals(20_00L, row.amountPaise)
+        assertEquals("Chai stall", row.payee)
+        assertEquals(Category.ESSENTIAL, row.category)
+        assertEquals(Source.MANUAL, row.source)
+        assertEquals(TagSource.APP, row.tagSource)
+        assertEquals(clock.millis(), row.taggedAt)
+        assertEquals(clock.millis(), row.createdAt)
+        assertEquals(clock.millis(), row.updatedAt)
+        assertEquals(istAt(2026, 10, 20, 8, 30).toEpochMilli(), row.occurredAt)
+        assertNull(row.smsHash)
+        assertNull(row.upiRef)
+        assertNull(row.bank)
+    }
+
+    @Test fun addManual_at2359On31Oct_isOctober() = runBlocking {
+        clock.now = istAt(2026, 10, 31, 23, 59, 30)
+        repo.addManual(expense(occurredAt = istAt(2026, 10, 31, 23, 59)))
+        assertEquals("2026-10", rows("2026-10").single().monthKey)
+        assertTrue(rows("2026-11").isEmpty())
+    }
+
+    @Test fun addManual_createsMonthRowFromDefault() = runBlocking {
+        settings.setDefaultBudgetPaise(5_000_00L)
+        repo.addManual(expense())
+        assertEquals(MonthBudgetEntity("2026-10", 5_000_00L), monthRow())
+    }
+
+    @Test fun addManual_doesNotOverwriteExistingMonthRow() = runBlocking {
+        db.monthBudgetDao().insertIfMissing(MonthBudgetEntity("2026-10", 3_000_00L, alerted75 = true))
+        settings.setDefaultBudgetPaise(5_000_00L)
+        repo.addManual(expense())
+        assertEquals(MonthBudgetEntity("2026-10", 3_000_00L, alerted75 = true), monthRow())
+    }
+
+    @Test fun addManual_noDefault_createsNoMonthRow() = runBlocking {
+        repo.addManual(expense())
+        assertNull(monthRow())
+    }
+
+    @Test fun addManual_twoIdenticalEntries_bothKept() = runBlocking {
+        repo.addManual(expense())
+        repo.addManual(expense())
+        assertEquals(2, rows().size)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun addManual_zeroAmountThrows() = runBlocking<Unit> {
+        repo.addManual(expense(amountPaise = 0))
+    }
+
+    // updateManual
+
+    @Test fun updateManual_sameCategory_keepsTagFieldsAndTime() = runBlocking {
+        val id = repo.addManual(expense())
+        val before = rows().single()
+        clock.now = clock.now.plusSeconds(600)
+        assertTrue(repo.updateManual(id, 25_00L, "Tea", Category.MISC))
+        val after = rows().single()
+        assertEquals(25_00L, after.amountPaise)
+        assertEquals("Tea", after.payee)
+        assertEquals(TagSource.APP, after.tagSource)
+        assertEquals(before.taggedAt, after.taggedAt)
+        assertEquals(clock.millis(), after.updatedAt)
+        assertEquals(before.occurredAt, after.occurredAt)
+        assertEquals(before.monthKey, after.monthKey)
+    }
+
+    @Test fun updateManual_newCategory_setsAppAndTaggedAtNow() = runBlocking {
+        val id = repo.addManual(expense())
+        clock.now = clock.now.plusSeconds(600)
+        assertTrue(repo.updateManual(id, 20_00L, "Chai stall", Category.ESSENTIAL))
+        val after = rows().single()
+        assertEquals(Category.ESSENTIAL, after.category)
+        assertEquals(TagSource.APP, after.tagSource)
+        assertEquals(clock.millis(), after.taggedAt)
+        assertEquals(istAt(2026, 10, 20, 8, 30).toEpochMilli(), after.occurredAt)
+        assertEquals("2026-10", after.monthKey)
+    }
+
+    @Test fun updateManual_afterMonthChange_staysInItsMonth() = runBlocking {
+        val id = repo.addManual(expense(occurredAt = istAt(2026, 10, 31, 23, 0)))
+        clock.now = istAt(2026, 11, 1, 0, 10)
+        assertTrue(repo.updateManual(id, 30_00L, "Late chai", Category.MISC))
+        assertEquals("2026-10", rows("2026-10").single().monthKey)
+        assertTrue(rows("2026-11").isEmpty())
+    }
+
+    @Test fun updateManual_smsRow_returnsFalseAndChangesNothing() = runBlocking {
+        val id = saveOk(debit("h1"))
+        val before = rows().single()
+        assertEquals(false, repo.updateManual(id, 1_00L, "Changed", Category.MISC))
+        assertEquals(before, rows().single())
+    }
+
+    @Test fun updateManual_missingId_returnsFalse() = runBlocking {
+        assertEquals(false, repo.updateManual(12345L, 1_00L, "X", Category.MISC))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun updateManual_zeroAmountThrows() = runBlocking<Unit> {
+        val id = repo.addManual(expense())
+        repo.updateManual(id, 0, "X", Category.MISC)
+    }
+
+    // delete and observers
+
+    @Test fun delete_removesRowAndReturnsFalseSecondTime() = runBlocking {
+        val id = saveOk(debit("h1"))
+        assertTrue(repo.delete(id))
+        assertTrue(rows().isEmpty())
+        assertEquals(false, repo.delete(id))
+    }
+
+    @Test fun delete_recalculatesMonthSummary() = runBlocking {
+        settings.setDefaultBudgetPaise(1_000_00L)
+        val id = saveOk(debit("h1", amountPaise = 400_00))
+        assertEquals(400_00L, repo.observeMonth("2026-10", today).first().summary!!.miscSpentPaise)
+        repo.delete(id)
+        assertEquals(0L, repo.observeMonth("2026-10", today).first().summary!!.miscSpentPaise)
+    }
+
+    @Test fun observeTransaction_nullAfterDelete() = runBlocking {
+        val id = repo.addManual(expense())
+        assertEquals(id, repo.observeTransaction(id).first()?.id)
+        repo.delete(id)
+        assertNull(repo.observeTransaction(id).first())
+    }
+
+    @Test fun observeMonthsWithData_andAllForExport() = runBlocking {
+        saveOk(debit("sep", ref = "111111111111", occurredAt = istAt(2026, 9, 10, 10, 0)))
+        repo.addManual(expense())
+        assertEquals(listOf("2026-10", "2026-09"), repo.observeMonthsWithData().first())
+        assertEquals(listOf("sep", null), repo.allForExport().map { it.smsHash })
+    }
+
+    @Test fun setBudgetFromSettings_keepsBothAlertFlags() = runBlocking {
+        db.monthBudgetDao().insertIfMissing(
+            MonthBudgetEntity("2026-10", 5_000_00L, alerted75 = true, alerted100 = true),
+        )
+        repo.addManual(expense(amountPaise = 6_000_00L))
+        repo.setBudget(10_000_00L)
+        assertEquals(MonthBudgetEntity("2026-10", 10_000_00L, alerted75 = true, alerted100 = true), monthRow())
+    }
+
+    @Test fun repositoryIsThePaymentStore() = runBlocking {
+        val store: PaymentStore = repo
+        val id = store.addManual(expense())
+        assertTrue(store.setCategory(id, Category.ESSENTIAL, TagSource.APP))
+        assertTrue(store.delete(id))
     }
 }

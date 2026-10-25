@@ -45,7 +45,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.random.Random
@@ -84,10 +83,12 @@ internal fun SimulateSmsScreen(container: AppContainer, modifier: Modifier = Mod
         outcome = ""
     }
 
-    val zone = remember { ZoneId.systemDefault() }
-    val monthFlow = remember {
-        container.repository.observeMonth(monthKeyOf(Instant.now(), zone), LocalDate.now(zone))
-    }
+    // Read at each recomposition so a time zone change applies without leaving the screen.
+    val zone = container.zone
+    val now = container.clock.instant()
+    val monthKey = monthKeyOf(now, zone)
+    val today = now.atZone(zone).toLocalDate()
+    val monthFlow = remember(monthKey, today) { container.repository.observeMonth(monthKey, today) }
     val month by monthFlow.collectAsState(initial = null)
 
     Column(
