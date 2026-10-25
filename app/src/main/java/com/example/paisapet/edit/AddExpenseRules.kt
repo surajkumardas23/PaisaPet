@@ -60,18 +60,44 @@ fun acceptPayeeText(new: String): String {
     return new.substring(0, end)
 }
 
-/** The inline message under the amount field (Add and Edit). */
-fun amountErrorMessage(error: AddError): String? = when (error) {
+/** The friendly text for each Add or Edit error, shown under its field. */
+fun errorText(error: AddError): String = when (error) {
     AddError.AMOUNT_EMPTY -> "Enter an amount"
     AddError.AMOUNT_INVALID -> "Enter a valid amount, like 240 or 240.50"
     AddError.AMOUNT_ZERO -> "Amount must be more than ₹0"
     AddError.AMOUNT_TOO_LARGE -> "Amount can be at most ₹10,00,000"
-    AddError.DATE_BEFORE_MONTH, AddError.DATE_IN_FUTURE -> null
+    AddError.DATE_BEFORE_MONTH -> "Pick a date in the current month"
+    AddError.DATE_IN_FUTURE -> "The time can't be in the future"
 }
+
+/** The inline message under the amount field (Add and Edit); null for date errors. */
+fun amountErrorMessage(error: AddError): String? = when (error) {
+    AddError.DATE_BEFORE_MONTH, AddError.DATE_IN_FUTURE -> null
+    else -> errorText(error)
+}
+
+/** Errors shown under each Add field. A field shows its error once it was edited, or after Add was tapped. */
+data class AddFieldErrors(val amount: String?, val date: String?)
+
+fun addFieldErrors(errors: Set<AddError>, amountTouched: Boolean, dateTouched: Boolean, submitted: Boolean): AddFieldErrors {
+    val amount = AMOUNT_ERRORS.firstOrNull { it in errors }
+    val date = DATE_ERRORS.firstOrNull { it in errors }
+    return AddFieldErrors(
+        amount = amount?.takeIf { amountTouched || submitted }?.let(::errorText),
+        date = date?.takeIf { dateTouched || submitted }?.let(::errorText),
+    )
+}
+
+private val AMOUNT_ERRORS = listOf(AddError.AMOUNT_EMPTY, AddError.AMOUNT_INVALID, AddError.AMOUNT_ZERO, AddError.AMOUNT_TOO_LARGE)
+private val DATE_ERRORS = listOf(AddError.DATE_IN_FUTURE, AddError.DATE_BEFORE_MONTH)
 
 /** The date picker offers the 1st of this month up to today. */
 fun isSelectableDate(date: LocalDate, today: LocalDate): Boolean =
     !date.isBefore(today.withDayOfMonth(1)) && !date.isAfter(today)
+
+/** The date picker's rule in its own units (UTC midnight millis). */
+fun isSelectablePickerMillis(utcMillis: Long, today: LocalDate): Boolean =
+    isSelectableDate(pickerUtcMillisToDate(utcMillis), today)
 
 /** The Material 3 DatePicker works in UTC midnight millis, whatever the phone's zone. */
 fun pickerUtcMillisToDate(utcMillis: Long): LocalDate = Instant.ofEpochMilli(utcMillis).atZone(ZoneOffset.UTC).toLocalDate()

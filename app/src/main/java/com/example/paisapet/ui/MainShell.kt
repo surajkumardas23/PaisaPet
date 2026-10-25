@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +56,7 @@ import com.example.paisapet.nav.seeAll
 import com.example.paisapet.nav.tagNow
 import com.example.paisapet.nav.toSaveable
 import com.example.paisapet.ui.common.rememberToday
+import com.example.paisapet.ui.edit.AddExpenseSheet
 import com.example.paisapet.ui.edit.EditSheet
 import com.example.paisapet.ui.home.HomeScreen
 import com.example.paisapet.ui.home.buildHomeModel
@@ -127,8 +129,18 @@ fun MainShell(container: AppContainer) {
                     )
                 }
             },
-            // "+ Add expense" goes here in step 7.
-            floatingActionButton = {},
+            // Past months are read-only, so they get no "+ Add expense".
+            floatingActionButton = {
+                if (view != null && monthKey == currentKey) {
+                    ExtendedFloatingActionButton(
+                        onClick = { nav = nav.copy(sheet = Sheet.Add) },
+                        icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                        text = { Text("Add expense") },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+            },
         ) { padding ->
             val loaded = view
             when {
@@ -160,6 +172,13 @@ fun MainShell(container: AppContainer) {
         }
     }
 
+    if (nav.sheet == Sheet.Add) {
+        AddExpenseSheet(
+            clock = container.clock,
+            onAdd = container.paymentActions::add,
+            onClose = { nav = nav.copy(sheet = Sheet.None) },
+        )
+    }
     (nav.sheet as? Sheet.Edit)?.let { edit ->
         EditSheet(
             id = edit.id,
