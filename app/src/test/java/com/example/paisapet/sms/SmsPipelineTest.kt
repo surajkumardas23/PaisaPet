@@ -135,4 +135,14 @@ class SmsPipelineTest {
             pipeline(save = { throw IllegalStateException() }, onResult = throwing).process(sms("D01")),
         )
     }
+
+    @Test fun savedCarriesViaFallback() = runBlocking {
+        val axis = IncomingSms(
+            "AX-AXISBK-S",
+            "AXISBK: INR 450.00 debited from A/c XX1111 on 25-10-2026 via UPI Ref 123456789012. Not you? Call 1800",
+            sms("D04").receivedAt,
+        )
+        assertEquals(PipelineResult.Saved(42, prompted = true, viaFallback = true), pipeline().process(axis))
+        assertEquals(PipelineResult.Saved(42, prompted = true, viaFallback = false), pipeline().process(sms("D04")))
+    }
 }

@@ -14,9 +14,9 @@ object SmsFields {
     private val SENDER = Regex("""^[A-Z]{2,3}-([A-Z0-9]+)(?:-[A-Z])?$""", RegexOption.IGNORE_CASE)
     private val BARE_SENDER = Regex("""^[A-Z0-9]+$""", RegexOption.IGNORE_CASE)
 
-    // Day first, as Indian banks print it. "uu" is a two-digit year meaning 2000 + yy.
+    // Day first, as Indian banks print it. "uu" is a two-digit year meaning 2000 + yy; "uuuu" a full year.
     private val DATE_FORMATS: List<DateTimeFormatter> =
-        listOf("d/M/uu", "dMMMuu", "d-MMM-uu").map { pattern ->
+        listOf("d/M/uu", "d-M-uu", "dMMMuu", "d-MMM-uu", "d/M/uuuu", "d-M-uuuu").map { pattern ->
             DateTimeFormatterBuilder()
                 .parseCaseInsensitive()
                 .appendPattern(pattern)
@@ -42,7 +42,19 @@ object SmsFields {
         }
     }
 
-    /** Reads 03/10/26, 28Sep26 (any case) or 28-Jun-26. Returns null for anything else or an impossible date. */
+    // Date-shaped tokens, not glued to other digits or letters: 25/10/26, 25-10-26, 25-10-2026, 25Oct26, 25-Oct-26.
+    private val DATE_TOKEN = Regex(
+        """(?<![\dA-Za-z])(?:\d{1,2}[/-]\d{1,2}[/-](?:\d{4}|\d{2})|\d{1,2}-?[A-Za-z]{3}-?\d{2})(?![\dA-Za-z])""",
+    )
+
+    /** The first date in [body] that [readMessageDate] can read, or null. Used by the generic fallback. */
+    fun findMessageDate(body: String): LocalDate? =
+        DATE_TOKEN.findAll(body).firstNotNullOfOrNull { readMessageDate(it.value) }
+
+    /**
+     * Reads 03/10/26, 21-10-26, 28Sep26 (any case), 28-Jun-26, 25/10/2026 or 25-10-2026.
+     * Returns null for anything else or an impossible date.
+     */
     fun readMessageDate(text: String): LocalDate? {
         val trimmed = text.trim()
         for (format in DATE_FORMATS) {

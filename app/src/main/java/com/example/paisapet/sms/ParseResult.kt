@@ -25,6 +25,8 @@ data class ParsedDebit(
     val dateFromMessage: Boolean,
     /** SHA-256 of sender + "\n" + body, see [smsHash]. */
     val smsHash: String,
+    /** True when [GenericDebitFallback] found it instead of a bank template. Not stored in Room. */
+    val viaFallback: Boolean = false,
 )
 
 /** Why an SMS produced no transaction. [code] matches the `reason:` lines in docs/sample-sms.txt. */

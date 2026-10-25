@@ -1,14 +1,17 @@
 package com.example.paisapet.sms
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
 /**
  * Turns one SMS into a UPI debit or an ignore reason. Pure Kotlin, no Android classes,
- * no logging. A message is a debit only if one bank template in [DebitTemplates] matches it.
+ * no logging. A message is a debit only if one bank template in [DebitTemplates] matches it,
+ * or, failing that, the guarded [GenericDebitFallback] does.
  *
- * Order: (1) sender check, (2) hard-reject phrases, (3) bank templates, (4) explain the ignore.
+ * Order: (1) sender check, (2) hard-reject phrases, (3) bank templates, (3b) generic fallback,
+ * (4) explain the ignore.
  */
 object SmsParser {
 
@@ -56,6 +59,17 @@ object SmsParser {
                 return toDebit(template, match.groupValues, sender, body, receivedAt, zone)
             }
         }
+        GenericDebitFallback.match(sender, body)?.let { found ->
+            val debit = buildDebit(
+                amountPaise = found.amountPaise,
+                payee = NO_PAYEE,
+                upiRef = found.upiRef,
+                messageDate = SmsFields.findMessageDate(body),
+                sender = sender, body = body, receivedAt = receivedAt, zone = zone,
+                viaFallback = true,
+            )
+            return ParseResult.Debit(debit)
+        }
         return ParseResult.Ignored(explainIgnore(body))
     }
 
@@ -97,21 +111,42 @@ object SmsParser {
         val amountPaise = SmsFields.amountToPaise(groups[template.amountGroup])
         if (amountPaise == null || amountPaise <= 0) return ParseResult.Ignored(IgnoreReason.NO_AMOUNT)
 
-        val receivedLocal = receivedAt.atZone(zone)
-        val messageDate = SmsFields.readMessageDate(groups[template.dateGroup])
-        val occurredAt = messageDate?.atTime(receivedLocal.toLocalTime())?.atZone(zone)?.toInstant() ?: receivedAt
-
         return ParseResult.Debit(
-            ParsedDebit(
+            buildDebit(
                 amountPaise = amountPaise,
                 payee = cleanPayee(groups[template.payeeGroup]),
                 upiRef = groups[template.refGroup],
-                bank = SmsFields.bankFromSender(sender),
-                occurredAt = occurredAt,
-                monthKey = YearMonth.from(occurredAt.atZone(zone)).toString(),
-                dateFromMessage = messageDate != null,
-                smsHash = smsHash(sender, body),
+                messageDate = SmsFields.readMessageDate(groups[template.dateGroup]),
+                sender = sender, body = body, receivedAt = receivedAt, zone = zone,
+                viaFallback = false,
             ),
+        )
+    }
+
+    /** occurredAt = the message date with the received time of day, or the received time if no date was read. */
+    private fun buildDebit(
+        amountPaise: Long,
+        payee: String,
+        upiRef: String,
+        messageDate: LocalDate?,
+        sender: String,
+        body: String,
+        receivedAt: Instant,
+        zone: ZoneId,
+        viaFallback: Boolean,
+    ): ParsedDebit {
+        val receivedLocal = receivedAt.atZone(zone)
+        val occurredAt = messageDate?.atTime(receivedLocal.toLocalTime())?.atZone(zone)?.toInstant() ?: receivedAt
+        return ParsedDebit(
+            amountPaise = amountPaise,
+            payee = payee,
+            upiRef = upiRef,
+            bank = SmsFields.bankFromSender(sender),
+            occurredAt = occurredAt,
+            monthKey = YearMonth.from(occurredAt.atZone(zone)).toString(),
+            dateFromMessage = messageDate != null,
+            smsHash = smsHash(sender, body),
+            viaFallback = viaFallback,
         )
     }
 

@@ -16,7 +16,10 @@ object ReceiverTrace {
 
     fun record(context: Context, result: PipelineResult) {
         val (kind, detail) = when (result) {
-            is PipelineResult.Saved -> "Saved" to if (result.prompted) "prompted" else "not prompted"
+            is PipelineResult.Saved -> {
+                val prompt = if (result.prompted) "prompted" else "not prompted"
+                "Saved" to (prompt + if (result.viaFallback) " (generic rule)" else "")
+            }
             PipelineResult.Duplicate -> "Duplicate" to ""
             is PipelineResult.Ignored -> "Ignored" to result.reason.code
             is PipelineResult.Failed -> "Failed" to result.stage.name

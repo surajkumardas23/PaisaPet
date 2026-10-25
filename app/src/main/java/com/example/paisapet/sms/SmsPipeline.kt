@@ -6,8 +6,9 @@ import java.time.Instant
 
 /** What happened to one incoming SMS. Never holds the body or the sender. */
 sealed interface PipelineResult {
-    /** [prompted] is false when the tag prompt could not be shown (for example, notifications off). */
-    data class Saved(val id: Long, val prompted: Boolean) : PipelineResult
+    /** [prompted] is false when the tag prompt could not be shown (for example, notifications off).
+     *  [viaFallback] is true when the generic rule, not a bank template, found the debit. */
+    data class Saved(val id: Long, val prompted: Boolean, val viaFallback: Boolean = false) : PipelineResult
     data object Duplicate : PipelineResult
     data class Ignored(val reason: IgnoreReason) : PipelineResult
     /** No exception message is kept: it could echo the body. */
@@ -78,6 +79,6 @@ class SmsPipeline(
         } catch (e: Exception) {
             // Ignored: the data is saved and the UI observes Room.
         }
-        return PipelineResult.Saved(id, prompted)
+        return PipelineResult.Saved(id, prompted, debit.viaFallback)
     }
 }

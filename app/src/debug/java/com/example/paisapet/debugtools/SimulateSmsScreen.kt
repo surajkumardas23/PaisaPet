@@ -180,7 +180,9 @@ internal fun SimulateSmsScreen(container: AppContainer, modifier: Modifier = Mod
 }
 
 private fun describe(result: PipelineResult): String = when (result) {
-    is PipelineResult.Saved -> "Saved (id ${result.id}), " + if (result.prompted) "prompt shown" else "prompt NOT shown"
+    is PipelineResult.Saved -> "Saved (id ${result.id}), " +
+        (if (result.prompted) "prompt shown" else "prompt NOT shown") +
+        (if (result.viaFallback) ", via generic rule" else "")
     PipelineResult.Duplicate -> "Duplicate"
     is PipelineResult.Ignored -> "Ignored: ${result.reason.code}"
     is PipelineResult.Failed -> "Failed at ${result.stage}"

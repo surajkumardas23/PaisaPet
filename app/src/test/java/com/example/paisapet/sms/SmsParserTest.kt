@@ -215,4 +215,110 @@ class SmsParserTest {
         val result = parse(hdfcToAccount.replace("534902716399", "53490271639"))
         assertTrue("expected Ignored but got $result", result is ParseResult.Ignored)
     }
+
+    // Generic fallback: only when no bank template matched
+
+    private val axis =
+        "AXISBK: INR 450.00 debited from A/c XX1111 on 25-10-2026 via UPI Ref 123456789012. Not you? Call 1800"
+
+    private fun parseAxis(body: String) = parse(body, sender = "AX-AXISBK-S")
+
+    private fun assertFallbackDebit(result: ParseResult, amountPaise: Long = 45000) {
+        val debit = assertDebit(result)
+        assertEquals(amountPaise, debit.amountPaise)
+        assertEquals("123456789012", debit.upiRef)
+        assertEquals(SmsParser.NO_PAYEE, debit.payee)
+        assertTrue(debit.viaFallback)
+        assertTrue(debit.dateFromMessage)
+        assertEquals(LocalDate.of(2026, 10, 25), debit.occurredAt.atZone(zone).toLocalDate())
+        assertEquals("2026-10", debit.monthKey)
+        assertEquals("AXISBK", debit.bank)
+        // Time of day comes from the received time (12:00 IST).
+        assertEquals(12, debit.occurredAt.atZone(zone).hour)
+    }
+
+    private fun assertNotCaptured(body: String) {
+        val result = parseAxis(body)
+        assertTrue("expected Ignored but got $result", result is ParseResult.Ignored)
+    }
+
+    @Test
+    fun fallback_unknownBankDebit() = assertFallbackDebit(parseAxis(axis))
+
+    @Test
+    fun fallback_lowercase() = assertFallbackDebit(parseAxis(axis.lowercase()))
+
+    @Test
+    fun fallback_lineBreaks() = assertFallbackDebit(parseAxis(axis.replace(" ", "\n")))
+
+    @Test
+    fun fallback_amountAfterDebitedBy() =
+        assertFallbackDebit(parseAxis("Dear customer A/c X1111 debited by 49.00 on 25Oct26 via UPI Ref 123456789012"), 4900)
+
+    @Test
+    fun fallback_noDateUsesReceivedTime() {
+        val debit = assertDebit(parseAxis("INR 450.00 debited from A/c XX1111 via UPI Ref 123456789012"))
+        assertTrue(debit.viaFallback)
+        assertFalse(debit.dateFromMessage)
+        assertEquals(receivedAt, debit.occurredAt)
+    }
+
+    @Test
+    fun fallback_creditedToIsCredit() =
+        assertIgnored(IgnoreReason.CREDIT_UPI, parseAxis(axis.replace("debited from", "credited to")))
+
+    @Test
+    fun fallback_creditWordingIsCredit() =
+        assertIgnored(
+            IgnoreReason.CREDIT_UPI,
+            parseAxis("INR 450.00 credited to A/c XX1111 on 25-10-2026 via UPI Ref 123456789012"),
+        )
+
+    @Test
+    fun fallback_blockedWordsNotCaptured() {
+        for (word in listOf("Card", "ATM", "NEFT", "IMPS", "refund", "received", "OTP", "failed")) {
+            assertNotCaptured("$axis $word")
+        }
+    }
+
+    @Test
+    fun fallback_noUpiWord() = assertNotCaptured(axis.replace("UPI ", ""))
+
+    @Test
+    fun fallback_elevenDigitRef() = assertNotCaptured(axis.replace("123456789012", "12345678901"))
+
+    @Test
+    fun fallback_thirteenDigitNumberOnly() = assertNotCaptured(axis.replace("123456789012", "1234567890123"))
+
+    @Test
+    fun fallback_twoDifferentRefs() = assertNotCaptured("$axis Other ref 210987654321")
+
+    @Test
+    fun fallback_debitedWithoutExplicitPhrase() = assertNotCaptured("Amount debited 450 via UPI Ref 123456789012")
+
+    @Test
+    fun fallback_onlyBalanceAmount() =
+        assertNotCaptured("Debited from A/c XX1111. Avl Bal Rs 5000 UPI Ref 123456789012")
+
+    @Test
+    fun fallback_creditedAndDebitPhraseNotCaptured() =
+        assertNotCaptured("INR 450.00 debited from A/c XX1111 and credited to A/c XX2222 via UPI Ref 123456789012")
+
+    @Test
+    fun fallback_phoneSenderStillRejectedFirst() =
+        assertIgnored(IgnoreReason.SENDER_IS_PHONE_NUMBER, parse(axis, sender = "+919876543210"))
+
+    @Test
+    fun fallback_personNameSenderNotCaptured() {
+        val result = parse(axis, sender = "Mom")
+        assertTrue("expected Ignored but got $result", result is ParseResult.Ignored)
+    }
+
+    @Test
+    fun fallback_templatesWin() {
+        val icici = "ICICI Bank Acct XX518 debited for Rs 189.00 on 28-Jun-26; Jio Prepaid Rec credited. " +
+            "UPI:651208947335. Call 18002662 for dispute. SMS BLOCK 518 to 9215676766."
+        assertFalse(assertDebit(parse(icici, sender = "JD-ICICIT-S")).viaFallback)
+        assertFalse(assertDebit(parse(hdfcRegular)).viaFallback)
+    }
 }
