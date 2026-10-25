@@ -113,4 +113,65 @@ class MainNavTest {
         val opened = NavState(settingsOpen = true).openTransaction(Long.MAX_VALUE)
         assertEquals(opened, navStateFromSaveable(opened.toSaveable()))
     }
+
+    // Widget and alert taps (Phase 7)
+
+    private val home = NavState(tab = Tab.HOME, sheet = Sheet.None, monthKey = null, filter = TxFilter.ALL)
+
+    @Test fun openHomeFromSettings() {
+        assertEquals(home, NavState(tab = Tab.TRANSACTIONS, settingsOpen = true).open(OpenTarget.Home))
+    }
+
+    @Test fun openHomeFromTheDebugPage() {
+        assertEquals(home, NavState(settingsOpen = true, debugOpen = true).open(OpenTarget.Home))
+    }
+
+    @Test fun openHomeFromAPastMonthGoesToTheCurrentMonth() {
+        val s = NavState(tab = Tab.TRANSACTIONS, monthKey = "2026-09", filter = TxFilter.NOT_TAGGED)
+        assertEquals(home, s.open(OpenTarget.Home))
+    }
+
+    @Test fun openHomeClosesAnySheet() {
+        for (sheet in listOf(Sheet.Add, Sheet.Budget, Sheet.Edit(3))) {
+            assertEquals(home, NavState(sheet = sheet).open(OpenTarget.Home))
+        }
+    }
+
+    @Test fun openHomeThenBackLeavesTheApp() {
+        assertNull(NavState(tab = Tab.TRANSACTIONS, settingsOpen = true).open(OpenTarget.Home).back())
+    }
+
+    @Test fun openAddFromTransactionsInAPastMonth() {
+        val s = NavState(tab = Tab.TRANSACTIONS, monthKey = "2026-09", filter = TxFilter.MISC)
+        assertEquals(home.copy(sheet = Sheet.Add), s.open(OpenTarget.AddExpense))
+    }
+
+    @Test fun openAddFromSettingsDebugAndAnotherSheet() {
+        for (sheet in listOf(Sheet.Budget, Sheet.Edit(3))) {
+            val s = NavState(settingsOpen = true, debugOpen = true, sheet = sheet)
+            assertEquals(home.copy(sheet = Sheet.Add), s.open(OpenTarget.AddExpense))
+        }
+    }
+
+    @Test fun openAddThenBackShowsHome() {
+        assertEquals(home, NavState(tab = Tab.TRANSACTIONS).open(OpenTarget.AddExpense).back())
+    }
+
+    @Test fun openPaymentIsOpenTransaction() {
+        val states = listOf(
+            NavState(),
+            NavState(tab = Tab.TRANSACTIONS, settingsOpen = true, debugOpen = true, sheet = Sheet.Add),
+            NavState(tab = Tab.TRANSACTIONS, monthKey = "2026-09", filter = TxFilter.MISC, sheet = Sheet.Budget),
+        )
+        for (s in states) {
+            assertEquals(s.openTransaction(12), s.open(OpenTarget.Payment(12)))
+        }
+    }
+
+    @Test fun openedTargetsSurviveSaveAndRestore() {
+        for (target in listOf(OpenTarget.Home, OpenTarget.AddExpense, OpenTarget.Payment(5))) {
+            val opened = NavState(settingsOpen = true, monthKey = "2026-09").open(target)
+            assertEquals(opened, navStateFromSaveable(opened.toSaveable()))
+        }
+    }
 }

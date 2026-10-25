@@ -10,9 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.paisapet.nav.EXTRA_OPEN_TARGET
 import com.example.paisapet.nav.NO_OPEN_ID
 import com.example.paisapet.nav.OpenRequest
-import com.example.paisapet.nav.parseOpenId
+import com.example.paisapet.nav.parseOpenTarget
 import com.example.paisapet.nav.readsOpenExtra
 import com.example.paisapet.notify.TagPromptNotifier
 import com.example.paisapet.ui.AppRoot
@@ -20,7 +21,7 @@ import com.example.paisapet.ui.theme.PaisaPetTheme
 
 class MainActivity : ComponentActivity() {
 
-    /** A notification body tap waiting to open the Edit sheet; AppRoot consumes it. */
+    /** A notification or widget tap waiting to be applied; AppRoot consumes it. */
     private var openRequest by mutableStateOf<OpenRequest?>(null)
     private var openSeq = 0
 
@@ -47,18 +48,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** singleTop: a body tap while the app is running arrives here instead of recreating the activity. */
+    /** singleTop: a tap while the app is running arrives here instead of recreating the activity. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         takeOpenRequest(intent)
     }
 
-    /** Reads the payment id once, then removes it so the same intent can never open the sheet again. */
+    /** Reads the open extras once, then removes both so the same intent can never be applied again. */
     private fun takeOpenRequest(intent: Intent) {
-        val id = parseOpenId(intent.getLongExtra(TagPromptNotifier.EXTRA_OPEN_TRANSACTION_ID, NO_OPEN_ID))
+        val target = parseOpenTarget(
+            intent.getLongExtra(TagPromptNotifier.EXTRA_OPEN_TRANSACTION_ID, NO_OPEN_ID),
+            intent.getStringExtra(EXTRA_OPEN_TARGET),
+        )
+        if (target != null) openRequest = OpenRequest(target, ++openSeq)
         intent.removeExtra(TagPromptNotifier.EXTRA_OPEN_TRANSACTION_ID)
-        if (id != null) openRequest = OpenRequest(id, ++openSeq)
+        intent.removeExtra(EXTRA_OPEN_TARGET)
     }
 
     private companion object {

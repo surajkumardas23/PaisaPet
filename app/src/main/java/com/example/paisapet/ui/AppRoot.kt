@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.map
 
 /**
  * Start-up gate: a blank background while onboardingComplete is read, then onboarding or the main app.
- * A notification tap ([openRequest]) waits while loading, is dropped during onboarding, and is applied by MainShell.
+ * A notification or widget tap ([openRequest]) waits while loading, is dropped during onboarding, and is applied by MainShell.
  */
 @Composable
 fun AppRoot(

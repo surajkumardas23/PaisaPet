@@ -33,6 +33,6 @@ class OpenRequestTest {
     }
 
     @Test fun sameIdTappedTwiceIsTwoRequests() {
-        assertNotEquals(OpenRequest(7, 1), OpenRequest(7, 2))
+        assertNotEquals(OpenRequest(OpenTarget.Payment(7), 1), OpenRequest(OpenTarget.Payment(7), 2))
     }
 }

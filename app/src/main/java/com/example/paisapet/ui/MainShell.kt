@@ -53,6 +53,7 @@ import com.example.paisapet.nav.Sheet
 import com.example.paisapet.nav.Tab
 import com.example.paisapet.nav.back
 import com.example.paisapet.nav.navStateFromSaveable
+import com.example.paisapet.nav.open
 import com.example.paisapet.nav.openTransaction
 import com.example.paisapet.nav.seeAll
 import com.example.paisapet.nav.tagNow
@@ -89,11 +90,11 @@ fun MainShell(
     var nav by rememberSaveable(stateSaver = NavStateSaver) { mutableStateOf(NavState()) }
     BackHandler(enabled = nav.back() != null) { nav.back()?.let { nav = it } }
 
-    // A notification body tap: open that payment's Edit sheet over the current tab, exactly once.
-    // NavState then keeps the sheet across rotation and process death, so the request is not needed again.
+    // A notification or widget tap: apply its target exactly once (a payment's Edit sheet, Home, or Add).
+    // NavState then keeps the result across rotation and process death, so the request is not needed again.
     LaunchedEffect(openRequest) {
         val request = openRequest ?: return@LaunchedEffect
-        nav = nav.openTransaction(request.id)
+        nav = nav.open(request.target)
         onOpenConsumed(request)
     }
 

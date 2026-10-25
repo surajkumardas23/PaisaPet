@@ -36,6 +36,16 @@ fun NavState.back(): NavState? = when {
 fun NavState.openTransaction(id: Long): NavState =
     copy(settingsOpen = false, debugOpen = false, sheet = Sheet.Edit(id))
 
+/**
+ * A tap from outside the app. Payment = [openTransaction]. Home = Home tab, current month, filter ALL,
+ * Settings, debug page and sheets closed. AddExpense = Home plus the Add sheet, so it never adds from a past month.
+ */
+fun NavState.open(target: OpenTarget): NavState = when (target) {
+    is OpenTarget.Payment -> openTransaction(target.id)
+    OpenTarget.Home -> NavState()
+    OpenTarget.AddExpense -> NavState(sheet = Sheet.Add)
+}
+
 /** Home's "Tag now". */
 fun NavState.tagNow(): NavState = copy(tab = Tab.TRANSACTIONS, filter = TxFilter.NOT_TAGGED)
 
@@ -72,7 +82,7 @@ fun navStateFromSaveable(list: List<Any?>): NavState {
     )
 }
 
-/** What to do with a pending "open this payment" request from the notification body tap. */
+/** What to do with a pending open request (notification body, widget or alert tap). */
 enum class StartAction { WAIT, DROP, OPEN }
 
 fun resolveOpen(start: StartScreen): StartAction = when (start) {
