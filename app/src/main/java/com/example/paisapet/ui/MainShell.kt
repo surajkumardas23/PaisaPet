@@ -67,6 +67,7 @@ import com.example.paisapet.ui.onboarding.isGranted
 import com.example.paisapet.ui.onboarding.openAppSettings
 import com.example.paisapet.ui.settings.BudgetSheet
 import com.example.paisapet.ui.settings.SettingsScreen
+import com.example.paisapet.ui.settings.shareCsvExport
 import com.example.paisapet.ui.transactions.TransactionsScreen
 import com.example.paisapet.ui.transactions.buildTransactionsModel
 import com.example.paisapet.ui.theme.CardWhite
@@ -135,15 +136,34 @@ fun MainShell(
     val openTransaction: (Long) -> Unit = { id -> nav = nav.openTransaction(id) }
     val editBudget: () -> Unit = { nav = nav.copy(sheet = Sheet.Budget) }
 
+    // FR-18: one export at a time; a failure shows a message instead of crashing.
+    var exporting by remember { mutableStateOf(false) }
+    val export: () -> Unit = {
+        if (!exporting) {
+            exporting = true
+            scope.launch {
+                val shared = shareCsvExport(context, container, today)
+                exporting = false
+                if (!shared) snackbarHostState.showSnackbar("Couldn't create the file. Try again.")
+            }
+        }
+    }
+
     when {
         nav.debugOpen && DebugTools.isAvailable -> PushedPage(title = DebugTools.TITLE, onBack = { nav = nav.copy(debugOpen = false) }) {
             DebugTools.Screen(container)
         }
-        nav.settingsOpen -> PushedPage(title = "Settings", onBack = { nav = nav.copy(settingsOpen = false) }) {
+        nav.settingsOpen -> PushedPage(
+            title = "Settings",
+            onBack = { nav = nav.copy(settingsOpen = false) },
+            snackbarHostState = snackbarHostState,
+        ) {
             SettingsScreen(
                 budgetPaise = currentBudgetPaise,
                 onEditBudget = editBudget,
                 onOpenDebug = { nav = nav.copy(debugOpen = true) },
+                exporting = exporting,
+                onExport = export,
             )
         }
         else -> Scaffold(
@@ -242,22 +262,30 @@ fun MainShell(
     }
 }
 
-/** A full-screen page with a back arrow, pushed over the tabs. */
+/** A full-screen page with a back arrow, pushed over the tabs. [snackbarHostState] shows its messages at the bottom. */
 @Composable
-private fun PushedPage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Column(
+private fun PushedPage(
+    title: String,
+    onBack: () -> Unit,
+    snackbarHostState: SnackbarHostState? = null,
+    content: @Composable () -> Unit,
+) {
+    Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .safeDrawingPadding(),
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+                }
+                Spacer(Modifier.width(4.dp))
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.width(4.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            content()
         }
-        content()
+        snackbarHostState?.let { SnackbarHost(it, Modifier.align(Alignment.BottomCenter)) }
     }
 }

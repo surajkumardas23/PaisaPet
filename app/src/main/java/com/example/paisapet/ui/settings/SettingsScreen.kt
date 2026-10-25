@@ -67,6 +67,9 @@ fun SettingsScreen(
     budgetPaise: Long?,
     onEditBudget: () -> Unit,
     onOpenDebug: () -> Unit,
+    /** True while the CSV is being written. */
+    exporting: Boolean = false,
+    onExport: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val notificationsNeeded = notificationsRequired(Build.VERSION.SDK_INT)
@@ -122,15 +125,15 @@ fun SettingsScreen(
         SectionLabel("DATA & PRIVACY")
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Step 10 wires the export up.
+                // Disabled while preparing, so a double tap cannot start two exports.
                 SettingsRow(
                     icon = R.drawable.ic_download,
                     tile = SmsTile,
                     tint = SmsIcon,
                     title = "Export my data (CSV)",
-                    subtitle = "Coming in the next step",
-                    enabled = false,
-                    onClick = {},
+                    subtitle = if (exporting) "Preparing…" else "Share all payments as a spreadsheet file",
+                    enabled = !exporting,
+                    onClick = onExport,
                 )
                 Text(
                     "If you uninstall the app, all data is deleted. Export first.",

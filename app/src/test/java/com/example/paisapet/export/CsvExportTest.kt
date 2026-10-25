@@ -7,6 +7,7 @@ import com.example.paisapet.model.Source
 import com.example.paisapet.model.TagSource
 import com.example.paisapet.tx
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -149,5 +150,67 @@ class CsvExportTest {
         assertEquals("'=1+1", cells[3])
         assertEquals("'-12345", cells[7])
         assertEquals("'@BANK", cells[8])
+    }
+
+    // Step 10 additions
+
+    @Test fun emptyListIsExactlyTheHeaderLine() {
+        val csv = buildCsv(emptyList(), IST)
+        assertEquals(listOf(CSV_HEADER), csv.split("\r\n").dropLast(1))
+        assertEquals("", csv.split("\r\n").last())
+    }
+
+    @Test fun oneRowEndsWithCrlf() {
+        val csv = buildCsv(listOf(tx()), IST)
+        assertTrue(csv.endsWith("\r\n"))
+        assertTrue(!csv.endsWith("\r\n\r\n"))
+        assertEquals(2, lines(csv).size)
+    }
+
+    @Test fun smsRowWithNullTagFields() {
+        val t = tx(category = Category.UNTAGGED, source = Source.SMS, tagSource = null, taggedAt = null,
+            upiRef = "123456789012", bank = "HDFCBK", occurredAt = millisAt(2026, 10, 25, 9, 0))
+        val cells = lines(buildCsv(listOf(t), IST))[1].split(",")
+        assertEquals(11, cells.size)
+        assertEquals("Not tagged", cells[4])
+        assertEquals("SMS", cells[5])
+        assertEquals("", cells[6])
+        assertEquals("", cells[10])
+    }
+
+    @Test fun payeeWithCommaQuoteNewlineAndEmoji() {
+        val payee = "Chai, \"best\"\nstall 😀"
+        val row = lines(buildCsv(listOf(tx(payee = payee)), IST))[1]
+        assertTrue(row, row.contains("\"Chai, \"\"best\"\"\nstall 😀\""))
+    }
+
+    @Test fun everyFormulaStartIsNeutralisedInTheRow() {
+        for (start in listOf("=", "+", "-", "@", "\t")) {
+            val row = lines(buildCsv(listOf(tx(payee = "${start}cmd")), IST))[1]
+            assertTrue("$start → $row", row.contains(",'${start}cmd,"))
+        }
+    }
+
+    @Test fun upiRefStartingWithMinusIsNeutralised() {
+        val cells = lines(buildCsv(listOf(tx(upiRef = "-1")), IST))[1].split(",")
+        assertEquals("'-1", cells[7])
+    }
+
+    @Test fun amountsInTheRows() {
+        val amounts = listOf(5L, 100L, 24_000L, 77_663L).mapIndexed { i, p ->
+            tx(id = i + 1L, amountPaise = p, occurredAt = millisAt(2026, 10, 1 + i))
+        }
+        val cells = lines(buildCsv(amounts, IST)).drop(1).map { it.split(",")[2] }
+        assertEquals(listOf("0.05", "1.00", "240.00", "776.63"), cells)
+        assertEquals("1.00", rupeesText(100))
+    }
+
+    @Test fun timesAreLocalIst() {
+        // 20:00 UTC on 24 Oct is 01:30 on 25 Oct in India.
+        val utc = java.time.Instant.parse("2026-10-24T20:00:00Z").toEpochMilli()
+        val cells = lines(buildCsv(listOf(tx(occurredAt = utc, createdAt = utc + 5_000)), IST))[1].split(",")
+        assertEquals("2026-10-25", cells[0])
+        assertEquals("01:30:00", cells[1])
+        assertEquals("2026-10-25 01:30:05", cells[9])
     }
 }
