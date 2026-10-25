@@ -92,4 +92,25 @@ class MainNavTest {
         assertEquals(StartAction.DROP, resolveOpen(StartScreen.ONBOARDING))
         assertEquals(StartAction.OPEN, resolveOpen(StartScreen.HOME))
     }
+
+    // Notification body tap (step 8)
+
+    @Test fun openTransactionReplacesAnyPreviousSheet() {
+        for (previous in listOf(Sheet.Add, Sheet.Budget, Sheet.Edit(3))) {
+            assertEquals(Sheet.Edit(9), NavState(sheet = previous).openTransaction(9).sheet)
+        }
+    }
+
+    @Test fun openTransactionFromSettingsAndDebugKeepsTabMonthAndFilter() {
+        val s = NavState(tab = Tab.TRANSACTIONS, settingsOpen = true, debugOpen = true, monthKey = "2026-09", filter = TxFilter.MISC)
+        val opened = s.openTransaction(12)
+        assertEquals(NavState(tab = Tab.TRANSACTIONS, sheet = Sheet.Edit(12), monthKey = "2026-09", filter = TxFilter.MISC), opened)
+        // Back from the opened sheet goes to the tab, not back into Settings.
+        assertEquals(NavState(tab = Tab.TRANSACTIONS, monthKey = "2026-09", filter = TxFilter.MISC), opened.back())
+    }
+
+    @Test fun openTransactionSurvivesSaveAndRestore() {
+        val opened = NavState(settingsOpen = true).openTransaction(Long.MAX_VALUE)
+        assertEquals(opened, navStateFromSaveable(opened.toSaveable()))
+    }
 }

@@ -26,6 +26,12 @@ fun notificationIdFor(transactionId: Long): Int =
         (transactionId xor (transactionId ushr 32)).toInt()
     }
 
+/** Data URI that makes each payment's body-tap PendingIntent distinct, e.g. "paisapet://transaction/42". */
+fun openUri(transactionId: Long): String = "paisapet://transaction/$transactionId"
+
+/** Request code of the body-tap PendingIntent; activity PendingIntents never clash with the broadcast ones. */
+fun openRequestCodeFor(transactionId: Long): Int = notificationIdFor(transactionId)
+
 /** Data URI that makes each action's PendingIntent distinct, e.g. "paisapet://tag/42/MISC". */
 fun actionUri(transactionId: Long, category: Category): String {
     requireTagCategory(category)

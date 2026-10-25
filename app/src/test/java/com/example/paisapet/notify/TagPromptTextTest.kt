@@ -55,4 +55,29 @@ class TagPromptTextTest {
         assertThrows(IllegalArgumentException::class.java) { actionUri(1, UNTAGGED) }
         assertThrows(IllegalArgumentException::class.java) { requestCodeFor(1, UNTAGGED) }
     }
+
+    // Body tap PendingIntent (step 8): unique per payment
+
+    @Test fun openUrisArePerPayment() {
+        assertEquals("paisapet://transaction/1", openUri(1))
+        assertEquals("paisapet://transaction/2", openUri(2))
+        assertEquals("paisapet://transaction/9223372036854775807", openUri(Long.MAX_VALUE))
+        assertEquals(3, setOf(openUri(1), openUri(2), openUri(Long.MAX_VALUE)).size)
+    }
+
+    @Test fun openRequestCodesArePerPayment() {
+        assertEquals(1, openRequestCodeFor(1))
+        assertEquals(2, openRequestCodeFor(2))
+        assertEquals(notificationIdFor(Long.MAX_VALUE), openRequestCodeFor(Long.MAX_VALUE))
+        assertEquals(3, setOf(openRequestCodeFor(1), openRequestCodeFor(2), openRequestCodeFor(Long.MAX_VALUE)).size)
+    }
+
+    @Test fun idsBeyondIntRangeDoNotCrashAndKeepDistinctUris() {
+        // Request codes of ids beyond Int range are folded and could in theory meet; the URI keeps the intents apart.
+        val a = Int.MAX_VALUE + 1L
+        val b = a + 1
+        openRequestCodeFor(a)
+        openRequestCodeFor(b)
+        assertNotEquals(openUri(a), openUri(b))
+    }
 }

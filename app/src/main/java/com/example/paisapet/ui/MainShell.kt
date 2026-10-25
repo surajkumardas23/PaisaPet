@@ -29,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +48,7 @@ import com.example.paisapet.debugtools.DebugTools
 import com.example.paisapet.list.effectiveMonth
 import com.example.paisapet.list.monthOptions
 import com.example.paisapet.nav.NavState
+import com.example.paisapet.nav.OpenRequest
 import com.example.paisapet.nav.Sheet
 import com.example.paisapet.nav.Tab
 import com.example.paisapet.nav.back
@@ -74,9 +76,21 @@ private val NavStateSaver = listSaver<NavState, Any?>(
 
 /** The app after onboarding: Home and Transactions tabs, the Settings page and (debug) Simulate SMS. */
 @Composable
-fun MainShell(container: AppContainer) {
+fun MainShell(
+    container: AppContainer,
+    openRequest: OpenRequest? = null,
+    onOpenConsumed: (OpenRequest) -> Unit = {},
+) {
     var nav by rememberSaveable(stateSaver = NavStateSaver) { mutableStateOf(NavState()) }
     BackHandler(enabled = nav.back() != null) { nav.back()?.let { nav = it } }
+
+    // A notification body tap: open that payment's Edit sheet over the current tab, exactly once.
+    // NavState then keeps the sheet across rotation and process death, so the request is not needed again.
+    LaunchedEffect(openRequest) {
+        val request = openRequest ?: return@LaunchedEffect
+        nav = nav.openTransaction(request.id)
+        onOpenConsumed(request)
+    }
 
     // The zone is read now, not kept from start-up, so a time zone change applies at once.
     val zone = container.zone
@@ -180,16 +194,19 @@ fun MainShell(container: AppContainer) {
         )
     }
     (nav.sheet as? Sheet.Edit)?.let { edit ->
-        EditSheet(
-            id = edit.id,
-            container = container,
-            currentKey = currentKey,
-            onClose = { nav = nav.copy(sheet = Sheet.None) },
-            onDeleted = {
-                nav = nav.copy(sheet = Sheet.None)
-                scope.launch { snackbarHostState.showSnackbar("This payment was deleted") }
-            },
-        )
+        // Keyed by id: a tap on another payment's notification starts a fresh sheet, not the old one's state.
+        key(edit.id) {
+            EditSheet(
+                id = edit.id,
+                container = container,
+                currentKey = currentKey,
+                onClose = { nav = nav.copy(sheet = Sheet.None) },
+                onDeleted = {
+                    nav = nav.copy(sheet = Sheet.None)
+                    scope.launch { snackbarHostState.showSnackbar("This payment was deleted") }
+                },
+            )
+        }
     }
 }
 

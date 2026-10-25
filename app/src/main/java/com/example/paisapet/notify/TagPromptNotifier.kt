@@ -76,17 +76,17 @@ class TagPromptNotifier(private val context: Context) {
 
     private fun openAppIntent(id: Long): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
-            .setData("paisapet://transaction/$id".toUri())
+            .setData(openUri(id).toUri())
             .putExtra(EXTRA_OPEN_TRANSACTION_ID, id)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(
-            context, notificationIdFor(id), intent,
+            context, openRequestCodeFor(id), intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
 
     companion object {
-        /** Read by MainActivity later (S7); ignored for now. */
+        /** Read by MainActivity, which opens the Edit sheet (S7) for this payment. */
         const val EXTRA_OPEN_TRANSACTION_ID = "com.example.paisapet.extra.OPEN_TRANSACTION_ID"
     }
 }
