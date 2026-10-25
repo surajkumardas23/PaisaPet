@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.example.paisapet.budget.BudgetSummary
 import com.example.paisapet.budget.Spend
 import com.example.paisapet.budget.effectiveBudget
+import com.example.paisapet.budget.monthKeyOf
 import com.example.paisapet.budget.summarize
 import com.example.paisapet.data.db.MonthBudgetEntity
 import com.example.paisapet.data.db.PaisaPetDatabase
@@ -52,6 +53,18 @@ class TransactionRepository(
             // insertIfMissing never overwrites an existing month row.
             if (defaultBudget != null) monthBudgetDao.insertIfMissing(MonthBudgetEntity(debit.monthKey, defaultBudget))
             SaveResult.Saved(id)
+        }
+    }
+
+    /** Saves [budgetPaise] as the default for future months and as this month's budget, keeping its alert flags. */
+    suspend fun setBudget(budgetPaise: Long) {
+        // DataStore first, outside the Room transaction. If killed in between, the default still applies.
+        settings.setDefaultBudgetPaise(budgetPaise)
+        val monthKey = monthKeyOf(clock.instant(), clock.zone)
+        db.withTransaction {
+            if (monthBudgetDao.insertIfMissing(MonthBudgetEntity(monthKey, budgetPaise)) == -1L) {
+                monthBudgetDao.updateBudget(monthKey, budgetPaise)
+            }
         }
     }
 

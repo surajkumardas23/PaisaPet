@@ -189,6 +189,31 @@ class TransactionRepositoryTest {
         assertNull(monthRow())
     }
 
+    // setBudget (clock is 20 Oct 2026)
+
+    @Test fun setBudget_noRow_createsRowAndDefault() = runBlocking {
+        repo.setBudget(4_000_00L)
+        assertEquals(MonthBudgetEntity("2026-10", 4_000_00L), monthRow())
+        assertEquals(4_000_00L, settings.defaultBudgetPaise.first())
+    }
+
+    @Test fun setBudget_existingRow_replacesBudgetKeepsAlertFlags() = runBlocking {
+        db.monthBudgetDao().insertIfMissing(
+            MonthBudgetEntity("2026-10", 3_000_00L, alerted75 = true, alerted100 = true),
+        )
+        repo.setBudget(8_000_00L)
+        assertEquals(MonthBudgetEntity("2026-10", 8_000_00L, alerted75 = true, alerted100 = true), monthRow())
+        assertEquals(8_000_00L, settings.defaultBudgetPaise.first())
+    }
+
+    @Test fun setBudget_leavesOtherMonthUntouched() = runBlocking {
+        val september = MonthBudgetEntity("2026-09", 2_000_00L, alerted75 = true, alerted100 = false)
+        db.monthBudgetDao().insertIfMissing(september)
+        repo.setBudget(6_000_00L)
+        assertEquals(september, monthRow("2026-09"))
+        assertEquals(6_000_00L, monthRow()?.budgetPaise)
+    }
+
     // setCategory
 
     @Test fun setCategory_setsCategoryTagSourceAndTaggedAt() = runBlocking {

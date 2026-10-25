@@ -16,4 +16,8 @@ interface MonthBudgetDao {
     /** Never overwrites an existing row. Returns -1 if the month already had one. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfMissing(budget: MonthBudgetEntity): Long
+
+    /** Changes only the budget; keeps alerted75/alerted100. Returns rows changed (0 if the month has no row). */
+    @Query("UPDATE month_budgets SET budgetPaise = :budgetPaise WHERE monthKey = :monthKey")
+    suspend fun updateBudget(monthKey: String, budgetPaise: Long): Int
 }
