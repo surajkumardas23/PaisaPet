@@ -26,7 +26,9 @@ The package is `com.example.paisapet`.
 - Phase 1: SMS parser, duplicate rules and fixture tests in com.example.paisapet.sms. 95 tests green. Done.
 - Phase 2: Room database, repository, SettingsStore, budget maths and Buddy state. 179 JVM tests and 37 phone tests green. Done.
 - Phase 3: SMS receiver, tag notification and tag actions, guarded fallback and debug Simulate SMS. 337 JVM tests green; verified on my phone with real HDFC payments. Done.
-- Phase 4: not started.
+- Phase 4: onboarding screens, theme, start-up gate and budget saving. Done.
+- Phase 5: navigation shell, Home, Transactions, Edit, Add, Settings with budget editing, past months (read-only), notification body tap and CSV export. 636 JVM tests and 80 phone tests green; verified on my phone. Done.
+- Phase 6: not started (signed tester APK and tester guide). Phase 7: widgets, Buddy art and limit alerts, after the tester build.
 
 Update this section at the end of every phase.
 
@@ -82,3 +84,10 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - Navigation is hand-written (rememberSaveable step + BackHandler); no navigation library. Phase 5 decides its own approach at its plan.
 - Budget saving: repository.setBudget(paise) writes the DataStore default and the current month's month_budgets row (updateBudget keeps alerted75/alerted100). Settings reuses it.
 - Theme: colours are named constants in ui/theme/Color.kt; dynamic colour is off; light scheme only. Buddy is drawn ONLY in ui/buddy/BuddyPlaceholder.kt (Phase 7 replaces it). Icons are copied vector drawables in res/drawable/ic_*.xml; material-icons-core is NOT a dependency.
+- Navigation is hand-written: one NavState (tab, settings, debug page, sheet, selected month, filter) in nav/MainNav.kt with pure back rules and a Saver. Home, Transactions, Edit and Add read data only through repository flows and pure builders (HomeModel, TransactionsModel); no budget maths in UI code.
+- Past months are read-only everywhere in the app (PaymentActions returns ReadOnly); only the notification's own Misc/Essential buttons can still tag a late payment.
+- PaymentActions is the only place that tags, edits or deletes from the UI and it cancels the payment's notification after a successful write.
+- The notification body tap passes EXTRA_OPEN_TRANSACTION_ID; MainActivity is singleTop and hands an OpenRequest(id, seq) to AppRoot, which applies it once the start screen is HOME and drops it during onboarding. Each notification's open-app PendingIntent is unique per payment.
+- The app clock follows the system zone at the moment of use (time/SystemClock); do not cache a ZoneId.
+- CSV export: share sheet + FileProvider; the only manifest addition for it is the provider. Keep formula neutralisation in export/CsvExport.kt.
+- Never run connectedAndroidTest on a phone with real payment data; it uninstalls the app.

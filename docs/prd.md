@@ -146,7 +146,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 
 **S4 Home, empty state** — 04-home-empty.png
 
-- Shown when the current month has no transactions: Buddy thriving, "₹5,000 left of ₹5,000", "0% used · Thriving", full bar, "N days left".
+- Shown when the current month has no transactions: Buddy thriving, "₹5,000 left of ₹5,000", "0% used · Thriving", empty bar (the bar shows % used, so it fills as you spend), "N days left".
 - Card "Fresh month, clean slate!" explaining that payments appear automatically. Empty Recent list with "No transactions yet this month".
 - Changes: remove "Tap Buddy to cheer!" and the quick chips (see P1 quick add).
 
@@ -154,6 +154,8 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 
 - Top: month name with dropdown, gear icon → S9.
 - Buddy card: Buddy in the current state, "₹X left of ₹Y", chip "NN% used · State", coloured progress bar, "₹S spent" and pace "₹P/day for D days left". Over budget: "₹Z over budget" in red.
+- The pace line is shown in whole rupees, rounded down ("₹714/day"); over budget it is hidden and "D days left" stays.
+- Past month: pill 'Past month · view only', a 'Back to <current month>' chip, the month's own budget, 'Month ended · ₹S spent' instead of the pace line, the untagged card is a plain line, no Add button. Selecting the current month in the dropdown follows the clock, so Home moves to the new month on the 1st.
 - Untagged card (only when ≥ 1 untagged): "N payments not tagged · Currently counted in Misc", **Tag now** → S6 filtered to Not tagged.
 - Recent: last 5 transactions (payee, time or date, amount, chip Misc / Essential / Not tagged). Tap row → S7. **See all** → S6.
 - Changes: use this variant (Misc/Essential/Not tagged chips), not the one with Food/Groceries/Commute labels. Replace "Daily cap" with the pace line above.
@@ -163,12 +165,13 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 - Month header with totals: Misc ₹ and Essential ₹ with % of total debits, plus total debits and count.
 - Filter chips: All / Misc (n) / Essential (n) / Not tagged (n). List grouped by day (Today, Yesterday, 21 Oct) with a day total.
 - Untagged rows highlighted with a "Tag me?" chip. Tap any row → S7.
+- The Misc total includes Not tagged payments (as on Home); the 'Misc (n)' chip lists only payments tagged Misc. A day total is the sum of the rows shown under the current filter. The % split is rounded down for Misc and Essential is 100 minus that.
 - Changes: remove "Buddy says" insight card, "Detected as …" hints, and the per-day misc budget line. Row subtitle = time, plus "Manual" if added by hand.
 
 **S7 Edit transaction (bottom sheet or screen)** — 07-edit-transaction.png
 
 - Shows amount, payee, date and time, source ("From SMS" or "Added manually").
-- Segmented toggle Misc | Essential with helper "Misc reduces your monthly budget. Essential stays outside it."
+- Segmented toggle Misc | Essential with helper "Misc reduces your monthly budget. Essential stays outside it." A Not tagged payment starts with nothing selected and Save is disabled until Misc or Essential is chosen. SMS payments keep amount and payee read-only; manual payments allow amount, payee and category but not the date. Delete asks to confirm. A tag, edit or delete also removes that payment's notification. A payment from a past month shows 'From a past month · view only' with no toggle, Save or Delete. The notification body tap opens this sheet for that exact payment (app closed, app open on another screen or sheet; ignored while onboarding is not complete).
 - **Save changes**; **Delete transaction** asks to confirm. Payee and amount editable only for manual entries.
 - Changes: remove Quick Tags.
 
@@ -176,6 +179,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 
 - Amount (required, > 0), Paid to (optional), Misc | Essential (defaults to Misc), date and time (defaults to now, editable, current month only).
 - Helper "For payments the app missed, like small UPI payments without SMS." **Add expense** saves and closes.
+- Amount up to ₹10,00,000; blank Paid to becomes 'Manual entry'; the date is limited to the 1st of the current month up to today and the time cannot be in the future; manual entries get tag source App and post no notification; the button shows only in the current month.
 - Changes: remove the "Chai & Snacks" category dropdown.
 
 **S9 Settings** — 09-settings.png
@@ -184,6 +188,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 - **Export my data (CSV)** → Android share sheet / save dialog. Privacy card "All data is stored only on this phone."
 - Permissions: SMS status (Granted / Not granted → opens system settings); Notifications status (opens system notification settings; no in-app toggle).
 - About: Paisa Pet, version, "Built for Indian UPI spends · No ads". Debug builds only: **Simulate SMS** entry.
+- Editing the budget applies to the current month and to future months and keeps the alert flags. The permission rows open the system pages and refresh on return. Home shows an 'Auto-tracking is off' card with Open Settings when SMS permission is missing. In debug builds only, Settings has a Simulate SMS entry.
 - Changes: remove the avatar; replace the notifications switch with a status row.
 
 **S10 Notifications** — 10-notifications.png
@@ -251,7 +256,7 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 - **FR-14 Manual add (P0).** Amount > 0 required; Paid to optional; category defaults to Misc; date within the current month, not in the future. Saved with source = Manual and no notification.
 - **FR-15 Widgets (P0).** Small and wide widgets show Buddy's state and ₹ left (wide: also budget, % used, last payment, + Add). Tapping opens Home; + Add opens S8. Widgets refresh within 5 seconds of any change and at midnight.
 - **FR-16 Month reset (P0).** On the 1st, the new month starts at 0 spent with the default budget; Home, widgets and alerts use the new month. Past transactions are kept.
-- **FR-18 CSV export (P0).** Exports all transactions with the columns in "Data model" through the Android share sheet. File name paisa-pet-YYYY-MM-DD.csv. Works offline.
+- **FR-18 CSV export (P0).** Exports all transactions with the columns in "Data model" through the Android share sheet. File name paisa-pet-YYYY-MM-DD.csv. Works offline. Export uses the Android share sheet and a FileProvider (cache/exports, old files deleted before each export). The file is UTF-8 with a BOM, CRLF line ends, rows oldest first. Values: Misc / Essential / Not tagged, SMS / Manual, Notification / App / empty. A text cell starting with =, +, -, @ or a tab gets a leading apostrophe so spreadsheets do not run it as a formula.
 - **FR-19 Simulate SMS (P0, debug only).** Settings › Simulate SMS lets the builder paste a message body and sender ID and run it through the full pipeline (parse → save → notify). Absent in release builds.
 - **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication. Cloud backup is switched off (allowBackup=false), so payment data never leaves the phone.
 - **FR-23 Past months (P0).** The month dropdown on Home and Transactions lists months with data; past months are read-only views with that month's budget.
@@ -440,7 +445,8 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Capture | The app was force-stopped, or freshly installed and never opened                                       | Android delivers no SMS to the app until it is opened once. Swiping it away from Recents is fine. The tester guide says so. |
 | Capture | Android blocks the SMS permission for an APK installed from a browser or file manager (Restricted setting) | Tester guide: App info, the three-dot menu, Allow restricted settings, then allow SMS.                           |
 | Capture | A bank wording the parser does not know                                                                | Not captured, or captured by the guarded fallback with the payee "UPI payment". Testers add missed payments with + Add expense and send the masked SMS so a template can be added. |
-| Capture | A payment to the user's own account (self-transfer)                                                    | Captured like any other; the user tags it Essential or deletes it.                                                  |
+| Capture | A payment to the user's own account (self-transfer)                                                    | Captured like any other; the user tags it Essential or deletes it. |
+| Capture | A late SMS for a payment made last month                                                               | Filed under the month of the date in the message; the notification's Misc and Essential buttons still work; in the app that month is view-only. |
 | Tagging | User never taps the notification                                                                       | Stays Not tagged, counts as Misc, shown on Home card                                                                |
 | Tagging | Several prompts pending                                                                                | Each acts on its own transaction ID                                                                                 |
 | Tagging | Notification permission off                                                                            | Transactions still saved; Home shows untagged card                                                                  |
@@ -451,10 +457,12 @@ The riskiest edge cases are missing SMS for small payments and phones that block
 | Month   | Payment at 23:59 on the last day, tagged after midnight                                                | Counts in the month of occurredAt, not the tag time                                                                 |
 | Month   | Phone time zone or date changed                                                                        | Months follow the phone's local date                                                                                |
 | Month   | SMS for a payment made last month arrives after month-end                                              | Filed under the month of the date in the message. If that month has no budget row, create one from the default budget. |
+| Month   | The phone's time zone changes while the app is open | The app follows the system time zone at the moment of use; each payment keeps the month it was saved under. |
 | Manual  | Amount 0, negative or non-numeric                                                                      | Add disabled with inline error                                                                                      |
 | Manual  | Date in the future or outside the current month                                                        | Not allowed in date picker                                                                                          |
 | Data    | App uninstalled                                                                                        | All data lost; Settings warns to export first                                                                       |
 | Data    | Very large amount (e.g. ₹50,000 rent paid by UPI)                                                      | Captured; user tags Essential                                                                                       |
+| Data    | A payment is deleted and the bank re-sends the identical SMS | It is captured again. |
 
 ## Tech stack, dependencies and infrastructure
 
@@ -559,6 +567,8 @@ Build in 9 phases, riskiest first, so a tester build exists by Sunday afternoon 
 | 6\. Tester build       | Signed release APK, tester guide, send to 4–5 users                                                             | —                          | Two testers have it installed and capturing                               | Sun 25, afternoon       |
 | 7\. Widgets and Buddy  | Glance widgets, Buddy art for 5 states, limit alerts                                                            | FR-15, FR-17               | Widgets and alerts pass the checklist; testers get v0.2                   | Sun 25, night           |
 | 8\. Iterate and submit | Fix top feedback, P1 items if time (FR-21, FR-22), final APK, demo video, update this PRD with learnings        | —                          | Submission sent                                                           | Mon 26 Oct, by 11:30 PM |
+
+**Status:** Built in order, 0.5 to 5 complete; Phase 6 is the signed tester APK; Phase 7 (widgets, Buddy art, limit alerts) follows.
 
 **Working with Claude Code**
 
