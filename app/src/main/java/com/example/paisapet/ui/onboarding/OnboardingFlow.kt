@@ -1,18 +1,6 @@
 package com.example.paisapet.ui.onboarding
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,8 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.example.paisapet.AppContainer
 import com.example.paisapet.onboarding.BudgetInput
 import com.example.paisapet.onboarding.OnboardingStep
@@ -41,6 +27,8 @@ fun OnboardingFlow(container: AppContainer) {
     var budgetEdited by rememberSaveable { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
+    var finishing by remember { mutableStateOf(false) }
+    var finishFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // On WELCOME there is no previous step, so the handler is off and the system closes the app.
@@ -90,28 +78,26 @@ fun OnboardingFlow(container: AppContainer) {
                 },
             )
         }
-        OnboardingStep.PERMISSIONS -> StepPlaceholder(
-            title = "Permissions",
-            nextLabel = "Go to Home",
-            onNext = { scope.launch { container.settings.setOnboardingComplete(true) } },
+        OnboardingStep.PERMISSIONS -> PermissionsScreen(
+            finishFailed = finishFailed,
             onBack = { step = OnboardingStep.BUDGET },
+            // "Go to Home" and "Continue manual". On success AppRoot leaves onboarding, so finishing stays true.
+            onFinish = {
+                if (!finishing) {
+                    finishing = true
+                    finishFailed = false
+                    scope.launch {
+                        try {
+                            container.settings.setOnboardingComplete(true)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            finishing = false
+                            finishFailed = true
+                        }
+                    }
+                }
+            },
         )
-    }
-}
-
-/** Placeholder, replaced in a later step (S3). */
-@Composable
-private fun StepPlaceholder(title: String, nextLabel: String, onNext: () -> Unit, onBack: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("$title (placeholder)", style = MaterialTheme.typography.headlineSmall)
-        PrimaryPillButton(text = nextLabel, onClick = onNext, modifier = Modifier.fillMaxWidth())
-        OutlinedButton(onClick = onBack) { Text("Back") }
     }
 }

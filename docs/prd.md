@@ -122,17 +122,19 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 - App name everywhere is **Paisa Pet** (screens say "Budget Buddy" or "Misc Budget Buddy": rename). The pet is "Buddy".
 - Navigation: bottom bar with **Home** and **Transactions**. "+ Add expense" button on both. Settings via the gear on Home. No bell icon, no profile avatar anywhere.
 - Save the screenshots in docs/screens/ with the file names below.
+- Dynamic colour is off; the app uses the light colour scheme only and the system font (Roboto). MainActivity is locked to portrait (Android 16 and later ignore the lock on tablets and foldables).
 
 **S1 Welcome** — 01-welcome.png
 
 - Buddy waving, "Paisa Pet", line "Know your untracked misc spending before the month ends."
 - Three cards: Reads your payment SMS / One tap to tag / Your data stays on your phone. Footer "No login or sign-up needed • Works offline". Button **Get started** → S2.
-- Changes: card text "Catches UPI & card debit alerts" → "Catches UPI debit alerts instantly". Remove "Step 1 of 3" (welcome has no stepper).
+- Changes: card text "Catches UPI & card debit alerts" → "Catches UPI debit alerts instantly". Remove "Step 1 of 3" (welcome has no stepper). Keeps the '100% On-device' pill and Buddy's greeting bubble from the mockup.
 
 **S2 Set misc budget** — 02-set-budget.png
 
 - Stepper "Step 1 of 2". Large ₹ input (numbers only), chips ₹3,000 / ₹5,000 / ₹8,000, helper "Approx. ₹X / day" = budget ÷ days in the current month.
 - **Continue** enabled when the amount is ₹100–₹10,00,000. Saves the budget → S3. Back arrow → S1.
+- First run pre-fills ₹5,000; after an app restart it pre-fills the saved budget. The field accepts only the digits 0 to 9, at most 7 of them, and shows Indian grouping while typing. Continue saves the budget as the default for future months AND as the current month's budget (repository.setBudget); if saving fails the screen stays and shows 'Couldn't save. Try again.'
 
 **S3 Permissions** — 03-permissions.png
 
@@ -140,6 +142,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 - Denied state card (shown only if SMS is denied): "Open Settings" opens the app's system settings; "Continue manual" goes Home.
 - **Go to Home** always enabled → S4/S5; marks onboarding complete.
 - Changes: replace "Filtered by RBI & NPCI debit formats only" with "Only UPI debit messages are used".
+- On Android 12 and below the Notifications card shows 'Not needed' (no permission exists). If SMS is denied once, the card says Not allowed and Allow stays. If it is denied again, or Android blocks it (Restricted setting on an APK installed from a browser or file manager), the card offers Open Settings and, on Android 13 and later, the hint 'If the Allow button is greyed out in Settings, tap the three dots and choose Allow restricted settings'. 'Go to Home' and 'Continue manual' both mark onboarding complete.
 
 **S4 Home, empty state** — 04-home-empty.png
 
@@ -227,8 +230,8 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 **Onboarding and setup**
 
 - **FR-01 Onboarding (P0).** First launch shows S1 → S2 → S3 → Home. After "Go to Home", an onboardingComplete flag is saved and later launches open Home directly. Killing the app mid-onboarding resumes at S1 with any saved budget kept.
-- **FR-02 Budget (P0).** Budget accepts whole rupees ₹100–₹10,00,000; anything else disables Continue with an inline message. Saved as the budget for the current month and as the default for future months. Editing in Settings changes the current month only from that moment; totals and Buddy update at once.
-- **FR-03 Permissions (P0).** Each Allow button requests one runtime permission (RECEIVE_SMS; POST_NOTIFICATIONS on Android 13+). Given SMS is denied, the denied card shows and manual add still works. Given permission is later revoked, Home shows a banner "Auto-tracking is off" with Open Settings.
+- **FR-02 Budget (P0).** Budget accepts whole rupees ₹100–₹10,00,000; anything else disables Continue with an inline message. Saved as the budget for the current month and as the default for future months. Editing in Settings changes the current month only from that moment; totals and Buddy update at once. Editing the budget later (Settings) reuses the same save and keeps that month's alert flags.
+- **FR-03 Permissions (P0).** Each Allow button requests one runtime permission (RECEIVE_SMS; POST_NOTIFICATIONS on Android 13+). Given SMS is denied, the denied card shows and manual add still works. Given permission is later revoked, Home shows a banner "Auto-tracking is off" with Open Settings. On Android 12 and below POST_NOTIFICATIONS does not exist: the Notifications card shows 'Not needed'.
 
 **Capture and tagging**
 

@@ -78,3 +78,7 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - Simulate SMS and ReceiverTrace live only in src/debug; src/release has stubs. After changes, check that the release APK has no SimulateSms or SampleSms classes. The debug screen is MainActivity for now; Phase 5 replaces it.
 - The notification body tap passes TagPromptNotifier.EXTRA_OPEN_TRANSACTION_ID to MainActivity, which ignores it until Phase 5, when it must open the Edit screen (S7) for that payment.
 - allowBackup is false on purpose (data stays on the phone). Never log or store an SMS body or sender, and never put them in notification extras.
+- Start-up gate: AppRoot reads SettingsStore.onboardingComplete (null = loading, shows a blank screen in the app background). Screens never navigate to Home directly: they set the flag and the gate switches. The debug Reset onboarding button sets it back to false and keeps all data.
+- Navigation is hand-written (rememberSaveable step + BackHandler); no navigation library. Phase 5 decides its own approach at its plan.
+- Budget saving: repository.setBudget(paise) writes the DataStore default and the current month's month_budgets row (updateBudget keeps alerted75/alerted100). Settings reuses it.
+- Theme: colours are named constants in ui/theme/Color.kt; dynamic colour is off; light scheme only. Buddy is drawn ONLY in ui/buddy/BuddyPlaceholder.kt (Phase 7 replaces it). Icons are copied vector drawables in res/drawable/ic_*.xml; material-icons-core is NOT a dependency.
