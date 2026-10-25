@@ -8,6 +8,9 @@ import com.example.paisapet.AppContainer
 object DebugTools {
     const val isAvailable = false
 
+    /** Empty in release: the label must not ship. */
+    const val TITLE = ""
+
     @Suppress("UNUSED_PARAMETER")
     @Composable
     fun Screen(container: AppContainer, modifier: Modifier = Modifier) = Unit

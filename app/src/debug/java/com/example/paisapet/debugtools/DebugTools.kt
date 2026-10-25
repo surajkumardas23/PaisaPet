@@ -8,6 +8,9 @@ import com.example.paisapet.AppContainer
 object DebugTools {
     const val isAvailable = true
 
+    /** The Settings entry and page title. */
+    const val TITLE = "Simulate SMS"
+
     @Composable
     fun Screen(container: AppContainer, modifier: Modifier = Modifier) = SimulateSmsScreen(container, modifier)
 }

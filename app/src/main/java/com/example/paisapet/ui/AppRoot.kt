@@ -12,11 +12,10 @@ import androidx.compose.ui.Modifier
 import com.example.paisapet.AppContainer
 import com.example.paisapet.onboarding.StartScreen
 import com.example.paisapet.onboarding.startScreen
-import com.example.paisapet.ui.home.HomePlaceholder
 import com.example.paisapet.ui.onboarding.OnboardingFlow
 import kotlinx.coroutines.flow.map
 
-/** Start-up gate: a blank background while onboardingComplete is read, then onboarding or Home. */
+/** Start-up gate: a blank background while onboardingComplete is read, then onboarding or the main app. */
 @Composable
 fun AppRoot(container: AppContainer) {
     val onboardingComplete by remember {
@@ -26,6 +25,6 @@ fun AppRoot(container: AppContainer) {
     when (startScreen(onboardingComplete)) {
         StartScreen.LOADING -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         StartScreen.ONBOARDING -> OnboardingFlow(container)
-        StartScreen.HOME -> HomePlaceholder(container)
+        StartScreen.HOME -> MainShell(container)
     }
 }

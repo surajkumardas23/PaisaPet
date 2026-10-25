@@ -58,3 +58,36 @@ val WarningText = Color(0xFF774600)
 /** The welcome hero card's soft corner tints. */
 val HeroMint = Color(0xFFD2FDEB)
 val HeroLavender = Color(0xFFF6F7FF)
+
+// Buddy's five states, sampled from 12-buddy-states.png. The main colour drives the progress bar,
+// the chip dot and text; the tint is the chip and glow background; the body is the placeholder face.
+
+val BuddyThriving = Color(0xFF0B7A55)
+val BuddyThrivingTint = Color(0xFFD2F8E6)
+val BuddyFine = Color(0xFF5E9E1B)
+val BuddyFineTint = Color(0xFFE6F5CC)
+val BuddyFineBody = Color(0xFF86C933)
+val BuddyWorried = Color(0xFF9C5F00)
+val BuddyWorriedTint = Color(0xFFFFDDB8)
+val BuddyWorriedBody = Color(0xFFF5A623)
+val BuddySick = Color(0xFFE8620F)
+val BuddySickTint = Color(0xFFFFE3CF)
+val BuddySickBody = Color(0xFFF77B3A)
+val BuddyFainted = Color(0xFFBA1A1A)
+val BuddyFaintedTint = Color(0xFFFFDAD6)
+val BuddyFaintedBody = Color(0xFFE5484D)
+
+/** Not tagged rows (S6) and the "Not tagged" chip text background. */
+val UntaggedRowTint = Color(0xFFFFF4E5)
+
+/** "₹Z over budget" and the "Not tagged" chip text. */
+val OverBudgetRed = Color(0xFFBA1A1A)
+
+/** The Home "N payments not tagged" card (05-home.png). */
+val UntaggedCard = Color(0xFF9C5F00)
+
+/** The "Not tagged" chip on Home. */
+val NotTaggedChip = Color(0xFFFFDAD6)
+
+/** Misc and Essential chips. */
+val CategoryChip = Color(0xFFEDEEEF)
