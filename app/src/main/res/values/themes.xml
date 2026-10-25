@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.PaisaPet" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.PaisaPet" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- App background grey: the window before Compose starts and the Android 12+ splash use it, so no white flash. -->
+        <item name="android:windowBackground">@color/app_background</item>
+    </style>
 </resources>

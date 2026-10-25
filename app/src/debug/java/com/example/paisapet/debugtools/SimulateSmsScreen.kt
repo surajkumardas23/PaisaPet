@@ -167,6 +167,13 @@ internal fun SimulateSmsScreen(container: AppContainer, modifier: Modifier = Mod
         rows.forEach { Text("${it.payee}, ${formatRupees(it.amountPaise)}, ${it.category}") }
 
         HorizontalDivider()
+        Text("Onboarding", style = MaterialTheme.typography.titleMedium)
+        OutlinedButton(onClick = { scope.launch { container.settings.setOnboardingComplete(false) } }) {
+            Text("Reset onboarding")
+        }
+        Text("Shows Welcome again. Payments and budget are kept.", style = MaterialTheme.typography.bodySmall)
+
+        HorizontalDivider()
         Text("Last real SMS handled by the receiver", style = MaterialTheme.typography.titleMedium)
         val last = trace
         if (last == null) {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple pointing finger (drawn shape, not the Material path). Tinted in code. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11,2a2,2 0,0 1,2 2v7h4a2,2 0,0 1,2 2v5a4,4 0,0 1,-4 4h-4a4,4 0,0 1,-4 -4v-4a1,1 0,0 1,1 -1h1V4a2,2 0,0 1,2 -2z" />
+</vector>
