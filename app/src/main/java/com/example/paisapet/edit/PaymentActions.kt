@@ -38,6 +38,8 @@ class PaymentActions(
     private val store: PaymentStore,
     private val cancelPrompt: (id: Long) -> Unit,
     private val currentMonthKey: () -> String,
+    /** Called after every successful tag, edit, delete or add (widgets, alerts). */
+    private val onDataChanged: suspend () -> Unit = {},
 ) {
 
     suspend fun saveEdit(original: TransactionEntity, change: EditChange): ActionResult {
@@ -74,14 +76,15 @@ class PaymentActions(
             is AddCheck.Invalid -> return ActionResult.Invalid(check.errors)
             is AddCheck.Valid -> check.expense
         }
-        return try {
+        try {
             store.addManual(expense)
-            ActionResult.Done
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            ActionResult.Failed
+            return ActionResult.Failed
         }
+        dataChanged()
+        return ActionResult.Done
     }
 
     private suspend fun writeThenCancel(id: Long, write: suspend () -> Boolean): ActionResult {
@@ -98,6 +101,18 @@ class PaymentActions(
         } catch (e: Exception) {
             // The write is saved; a prompt left on screen is harmless.
         }
+        dataChanged()
         return ActionResult.Done
+    }
+
+    /** A failing hook never changes a Done result. */
+    private suspend fun dataChanged() {
+        try {
+            onDataChanged()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // The write is saved; screens observe Room.
+        }
     }
 }

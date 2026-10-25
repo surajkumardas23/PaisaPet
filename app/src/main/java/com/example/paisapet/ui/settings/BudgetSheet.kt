@@ -31,7 +31,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
- * Edits the monthly misc budget (S9 pencil) with the S2 input. [onSave] is repository.setBudget: it saves the
+ * Edits the monthly misc budget (S9 pencil) with the S2 input. [onSave] is container.saveBudget: it saves the
  * default for future months and this month's budget, keeping the alert flags. Back and swipe-down call [onClose].
  */
 @OptIn(ExperimentalMaterial3Api::class)

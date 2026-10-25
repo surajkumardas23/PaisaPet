@@ -169,7 +169,12 @@ internal fun SimulateSmsScreen(container: AppContainer, modifier: Modifier = Mod
 
         HorizontalDivider()
         Text("Onboarding", style = MaterialTheme.typography.titleMedium)
-        OutlinedButton(onClick = { scope.launch { container.settings.setOnboardingComplete(false) } }) {
+        OutlinedButton(onClick = {
+            scope.launch {
+                container.settings.setOnboardingComplete(false)
+                container.launchAfterChange()
+            }
+        }) {
             Text("Reset onboarding")
         }
         Text("Shows Welcome again. Payments and budget are kept.", style = MaterialTheme.typography.bodySmall)

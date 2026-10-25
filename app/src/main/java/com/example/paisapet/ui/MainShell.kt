@@ -235,7 +235,7 @@ fun MainShell(
     if (nav.sheet == Sheet.Budget) {
         BudgetSheet(
             currentBudgetPaise = currentBudgetPaise,
-            onSave = container.repository::setBudget,
+            onSave = container::saveBudget,
             onClose = { nav = nav.copy(sheet = Sheet.None) },
         )
     }

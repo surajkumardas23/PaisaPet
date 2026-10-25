@@ -26,8 +26,8 @@ class SmsPipeline(
     private val save: suspend (ParsedDebit) -> SaveResult,
     /** Posts the tag prompt; returns false when it could not be shown. */
     private val prompt: (id: Long, debit: ParsedDebit) -> Boolean,
-    /** Called after a save; the widget refresh goes here later. */
-    private val onDataChanged: () -> Unit = {},
+    /** Called after a save with the new id and whether its prompt was shown (widgets, alerts). */
+    private val onDataChanged: suspend (id: Long, prompted: Boolean) -> Unit = { _, _ -> },
     /** Called exactly once per [process] with its result. */
     private val onResult: (PipelineResult) -> Unit = {},
 ) {
@@ -75,7 +75,9 @@ class SmsPipeline(
             false
         }
         try {
-            onDataChanged()
+            onDataChanged(id, prompted)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Ignored: the data is saved and the UI observes Room.
         }

@@ -18,8 +18,8 @@ sealed interface TagOutcome {
 class TagActionHandler(
     private val setCategory: suspend (id: Long, category: Category, tagSource: TagSource) -> Boolean,
     private val cancelPrompt: (id: Long) -> Unit,
-    /** The widget refresh goes here later. */
-    private val onDataChanged: () -> Unit = {},
+    /** Called after a successful tag (widgets, alerts). */
+    private val onDataChanged: suspend () -> Unit = {},
 ) {
 
     /** Never throws, except [CancellationException]. */
@@ -46,6 +46,8 @@ class TagActionHandler(
         if (!found) return TagOutcome.NotFound
         try {
             onDataChanged()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // The tag is saved and the UI observes Room.
         }

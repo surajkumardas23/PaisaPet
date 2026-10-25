@@ -64,7 +64,7 @@ fun OnboardingFlow(container: AppContainer) {
                         saveFailed = false
                         scope.launch {
                             val saved = try {
-                                container.repository.setBudget(paise)
+                                container.saveBudget(paise)
                                 true
                             } catch (e: CancellationException) {
                                 throw e
@@ -89,6 +89,8 @@ fun OnboardingFlow(container: AppContainer) {
                     scope.launch {
                         try {
                             container.settings.setOnboardingComplete(true)
+                            // The widget switches from "Set up Paisa Pet" to the numbers.
+                            container.launchAfterChange()
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {

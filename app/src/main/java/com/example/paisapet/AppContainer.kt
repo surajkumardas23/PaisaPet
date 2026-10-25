@@ -12,6 +12,7 @@ import com.example.paisapet.data.settings.SettingsStore
 import com.example.paisapet.edit.PaymentActions
 import com.example.paisapet.notify.TagActionHandler
 import com.example.paisapet.notify.TagPromptNotifier
+import com.example.paisapet.refresh.AfterDataChange
 import com.example.paisapet.sms.SmsParser
 import com.example.paisapet.sms.SmsPipeline
 import com.example.paisapet.time.SystemClock
@@ -19,6 +20,7 @@ import com.example.paisapet.widget.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
 
@@ -59,11 +61,23 @@ class AppContainer(context: Context) {
 
     val widgetRefresher: WidgetRefresher by lazy { WidgetRefresher(applicationContext) }
 
+    /** Runs after every data change: widgets now, limit alerts in step 10. */
+    val afterChange: AfterDataChange by lazy {
+        AfterDataChange(refreshWidgets = { widgetRefresher.refreshIfPlaced() })
+    }
+
+    /** For changes made from the UI: on appScope, so leaving the screen cannot cancel it. */
+    fun launchAfterChange() {
+        appScope.launch { afterChange.run() }
+    }
+
+    // Receivers await these hooks inside goAsync(), so the refresh finishes before the receiver does.
     val smsPipeline: SmsPipeline by lazy {
         SmsPipeline(
             parse = { s, b, t -> SmsParser.parse(s, b, t, zone) },
             save = repository::saveParsedDebit,
             prompt = { id, debit -> tagPromptNotifier.show(id, debit) },
+            onDataChanged = { _, _ -> afterChange.run() },
         )
     }
 
@@ -71,6 +85,7 @@ class AppContainer(context: Context) {
         TagActionHandler(
             setCategory = repository::setCategory,
             cancelPrompt = tagPromptNotifier::cancel,
+            onDataChanged = { afterChange.run() },
         )
     }
 
@@ -80,6 +95,13 @@ class AppContainer(context: Context) {
             store = repository,
             cancelPrompt = tagPromptNotifier::cancel,
             currentMonthKey = { monthKeyOf(clock.instant(), zone) },
+            onDataChanged = { launchAfterChange() },
         )
+    }
+
+    /** The budget from onboarding (S2) and Settings (S9): repository.setBudget, then the widgets and alerts. */
+    suspend fun saveBudget(paise: Long) {
+        repository.setBudget(paise)
+        launchAfterChange()
     }
 }

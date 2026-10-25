@@ -28,7 +28,7 @@ class SmsPipelineTest {
         parse: (String, String, java.time.Instant) -> ParseResult = { s, b, t -> SmsParser.parse(s, b, t, zone) },
         save: suspend (ParsedDebit) -> SaveResult = { saves += it; SaveResult.Saved(42) },
         prompt: (Long, ParsedDebit) -> Boolean = { id, debit -> prompts += id to debit; true },
-        onDataChanged: () -> Unit = { dataChanges++ },
+        onDataChanged: suspend (Long, Boolean) -> Unit = { _, _ -> dataChanges++ },
         onResult: (PipelineResult) -> Unit = { results += it },
     ) = SmsPipeline(parse, save, prompt, onDataChanged, onResult)
 
@@ -95,7 +95,7 @@ class SmsPipelineTest {
     }
 
     @Test fun dataChangedThrowsStillSaved() = runBlocking {
-        val result = pipeline(onDataChanged = { throw IllegalStateException() }).process(sms("D01"))
+        val result = pipeline(onDataChanged = { _, _ -> throw IllegalStateException() }).process(sms("D01"))
         assertEquals(PipelineResult.Saved(42, prompted = true), result)
     }
 
