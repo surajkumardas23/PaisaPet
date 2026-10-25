@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PLACEHOLDER Buddy, Sick. Copies ui/buddy/BuddyPlaceholder.kt (r = 54, centre 54,54). Replace with real art later. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFF77B3A"
+        android:pathData="M0,54 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" />
+    <path
+        android:fillColor="#4DFFFFFF"
+        android:pathData="M21.6,27 a10.8,10.8 0 1,0 21.6,0 a10.8,10.8 0 1,0 -21.6,0 Z" />
+    <path
+        android:fillColor="#99FF8FA3"
+        android:pathData="M18.36,61.56 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z M78.84,61.56 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z" />
+    <path
+        android:fillColor="#FF191C1D"
+        android:pathData="M31.32,49.68 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z M65.88,49.68 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32.13,46.98 a2.43,2.43 0 1,0 4.86,0 a2.43,2.43 0 1,0 -4.86,0 Z M66.69,46.98 a2.43,2.43 0 1,0 4.86,0 a2.43,2.43 0 1,0 -4.86,0 Z" />
+    <path
+        android:pathData="M45.36,66.96 Q47.52,64.26 49.68,66.96 Q51.84,69.66 54,66.96 Q56.16,64.26 58.32,66.96 Q60.48,69.66 62.64,66.96"
+        android:strokeColor="#FF191C1D"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.24" />
+    <path
+        android:pathData="M63.72,70.2 L87.48,82.08"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="5.4" />
+    <path
+        android:pathData="M63.72,70.2 L75.6,76.14"
+        android:strokeColor="#FFE53935"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.7" />
+    <path
+        android:fillColor="#FFE53935"
+        android:pathData="M59.94,70.2 a3.78,3.78 0 1,0 7.56,0 a3.78,3.78 0 1,0 -7.56,0 Z" />
+</vector>

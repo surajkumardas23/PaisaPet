@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PLACEHOLDER Buddy, Fainted. Copies ui/buddy/BuddyPlaceholder.kt (r = 54, centre 54,54). Replace with real art later. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFE5484D"
+        android:pathData="M0,54 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" />
+    <path
+        android:fillColor="#4DFFFFFF"
+        android:pathData="M21.6,27 a10.8,10.8 0 1,0 21.6,0 a10.8,10.8 0 1,0 -21.6,0 Z" />
+    <path
+        android:fillColor="#99FF8FA3"
+        android:pathData="M18.36,61.56 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z M78.84,61.56 a5.4,5.4 0 1,0 10.8,0 a5.4,5.4 0 1,0 -10.8,0 Z" />
+    <path
+        android:pathData="M31.32,44.28 L42.12,55.08 M31.32,55.08 L42.12,44.28 M65.88,44.28 L76.68,55.08 M65.88,55.08 L76.68,44.28"
+        android:strokeColor="#FF191C1D"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.24" />
+    <path
+        android:pathData="M49.14,68.04 a4.86,4.86 0 1,0 9.72,0 a4.86,4.86 0 1,0 -9.72,0 Z"
+        android:strokeColor="#FF191C1D"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.24" />
+</vector>
