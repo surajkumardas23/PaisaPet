@@ -43,16 +43,17 @@ fun effectiveBudget(monthRowBudget: Long?, defaultBudget: Long?): Long? = monthR
 
 fun summarize(monthKey: String, budgetPaise: Long, spends: List<Spend>, today: LocalDate): BudgetSummary {
     require(budgetPaise > 0) { "Budget must be > 0, was $budgetPaise" }
-    val misc = miscSpent(spends)
-    val essential = spends.filter { it.category == Category.ESSENTIAL }.sumOf { it.amountPaise }
+    // Same totals as the Transactions header, so Home and S6 cannot disagree.
+    val totals = debitTotals(spends)
+    val misc = totals.miscPaise
     val left = left(budgetPaise, misc)
     val days = daysLeft(today, monthKey)
     return BudgetSummary(
         monthKey = monthKey,
         budgetPaise = budgetPaise,
         miscSpentPaise = misc,
-        essentialSpentPaise = essential,
-        totalSpentPaise = misc + essential,
+        essentialSpentPaise = totals.essentialPaise,
+        totalSpentPaise = totals.totalPaise,
         untaggedCount = spends.count { it.category == Category.UNTAGGED },
         leftPaise = left,
         pctUsedFloor = pctUsedFloor(misc, budgetPaise),
