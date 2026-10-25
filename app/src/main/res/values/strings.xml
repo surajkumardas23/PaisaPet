@@ -4,4 +4,8 @@
     <string name="channel_budget_alerts">Budget alerts</string>
     <string name="action_misc">Misc</string>
     <string name="action_essential">Essential</string>
+    <string name="widget_small_name">Paisa Pet</string>
+    <string name="widget_small_description">See your misc budget left</string>
+    <string name="widget_preview_amount" translatable="false">₹3,200</string>
+    <string name="widget_preview_caption" translatable="false">left of ₹5,000</string>
 </resources>

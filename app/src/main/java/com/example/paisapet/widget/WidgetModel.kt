@@ -16,6 +16,9 @@ const val WIDGET_SET_UP_TEXT = "Set up Paisa Pet"
 const val WIDGET_NO_BUDGET_TEXT = "Set your budget"
 const val WIDGET_NO_PAYMENTS_TEXT = "No payments yet this month"
 
+/** Shown when the widget could not read the data. */
+const val WIDGET_ERROR_TEXT = "Open Paisa Pet"
+
 /** Longer payees are cut to this many characters, the last one an ellipsis. */
 const val WIDGET_PAYEE_MAX = 18
 
@@ -63,6 +66,10 @@ fun buildWidgetModel(onboardingComplete: Boolean, view: MonthView, monthKey: Str
         lastPayment = newest(view.transactions)?.let(::lastPaymentText),
     )
 }
+
+/** Width of the coloured part of a [trackDp]-wide bar; Glance has no fractional width, so the widget passes dp. */
+fun barFillDp(trackDp: Float, barPercent: Int): Float =
+    if (trackDp <= 0f) 0f else trackDp * barPercent.coerceIn(0, 100) / 100f
 
 /** "Oct" for "2026-10". */
 fun shortMonth(monthKey: String): String = parseMonthKey(monthKey).format(SHORT_MONTH)

@@ -15,6 +15,7 @@ import com.example.paisapet.notify.TagPromptNotifier
 import com.example.paisapet.sms.SmsParser
 import com.example.paisapet.sms.SmsPipeline
 import com.example.paisapet.time.SystemClock
+import com.example.paisapet.widget.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,6 +56,8 @@ class AppContainer(context: Context) {
     val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
 
     val tagPromptNotifier: TagPromptNotifier by lazy { TagPromptNotifier(applicationContext) }
+
+    val widgetRefresher: WidgetRefresher by lazy { WidgetRefresher(applicationContext) }
 
     val smsPipeline: SmsPipeline by lazy {
         SmsPipeline(

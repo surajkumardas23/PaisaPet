@@ -18,6 +18,7 @@ import com.example.paisapet.nav.readsOpenExtra
 import com.example.paisapet.notify.TagPromptNotifier
 import com.example.paisapet.ui.AppRoot
 import com.example.paisapet.ui.theme.PaisaPetTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +47,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /** Safety net: the widgets catch up with anything they missed. A no-op when no widget is placed. */
+    override fun onStart() {
+        super.onStart()
+        val container = (application as PaisaPetApp).container
+        container.appScope.launch { container.widgetRefresher.refreshIfPlaced() }
     }
 
     /** singleTop: a tap while the app is running arrives here instead of recreating the activity. */
