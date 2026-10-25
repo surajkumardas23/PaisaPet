@@ -53,6 +53,22 @@ fun normalisePayee(text: String): String {
     return oneLine.substring(0, end).trimEnd()
 }
 
+/** What the payee field keeps while typing or pasting: at most 60 characters, never half an emoji. Trimmed on save. */
+fun acceptPayeeText(new: String): String {
+    if (new.length <= MAX_PAYEE_LENGTH) return new
+    val end = if (new[MAX_PAYEE_LENGTH - 1].isHighSurrogate()) MAX_PAYEE_LENGTH - 1 else MAX_PAYEE_LENGTH
+    return new.substring(0, end)
+}
+
+/** The inline message under the amount field (Add and Edit). */
+fun amountErrorMessage(error: AddError): String? = when (error) {
+    AddError.AMOUNT_EMPTY -> "Enter an amount"
+    AddError.AMOUNT_INVALID -> "Enter a valid amount, like 240 or 240.50"
+    AddError.AMOUNT_ZERO -> "Amount must be more than ₹0"
+    AddError.AMOUNT_TOO_LARGE -> "Amount can be at most ₹10,00,000"
+    AddError.DATE_BEFORE_MONTH, AddError.DATE_IN_FUTURE -> null
+}
+
 /** The date picker offers the 1st of this month up to today. */
 fun isSelectableDate(date: LocalDate, today: LocalDate): Boolean =
     !date.isBefore(today.withDayOfMonth(1)) && !date.isAfter(today)

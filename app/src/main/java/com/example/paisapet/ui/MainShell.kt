@@ -19,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -43,19 +46,23 @@ import com.example.paisapet.debugtools.DebugTools
 import com.example.paisapet.list.effectiveMonth
 import com.example.paisapet.list.monthOptions
 import com.example.paisapet.nav.NavState
+import com.example.paisapet.nav.Sheet
 import com.example.paisapet.nav.Tab
 import com.example.paisapet.nav.back
 import com.example.paisapet.nav.navStateFromSaveable
+import com.example.paisapet.nav.openTransaction
 import com.example.paisapet.nav.seeAll
 import com.example.paisapet.nav.tagNow
 import com.example.paisapet.nav.toSaveable
 import com.example.paisapet.ui.common.rememberToday
+import com.example.paisapet.ui.edit.EditSheet
 import com.example.paisapet.ui.home.HomeScreen
 import com.example.paisapet.ui.home.buildHomeModel
 import com.example.paisapet.ui.transactions.TransactionsScreen
 import com.example.paisapet.ui.transactions.buildTransactionsModel
 import com.example.paisapet.ui.theme.CardWhite
 import com.example.paisapet.ui.theme.InkSecondary
+import kotlinx.coroutines.launch
 import java.time.YearMonth
 
 private val NavStateSaver = listSaver<NavState, Any?>(
@@ -90,6 +97,10 @@ fun MainShell(container: AppContainer) {
     val view by remember(monthKey, today) { container.repository.observeMonth(monthKey, today) }
         .collectAsStateWithLifecycle(initialValue = null)
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val openTransaction: (Long) -> Unit = { id -> nav = nav.openTransaction(id) }
+
     when {
         nav.debugOpen && DebugTools.isAvailable -> PushedPage(title = DebugTools.TITLE, onBack = { nav = nav.copy(debugOpen = false) }) {
             DebugTools.Screen(container)
@@ -99,6 +110,7 @@ fun MainShell(container: AppContainer) {
         }
         else -> Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 NavigationBar(containerColor = CardWhite) {
                     NavigationBarItem(
@@ -129,7 +141,7 @@ fun MainShell(container: AppContainer) {
                     onOpenSettings = { nav = nav.copy(settingsOpen = true) },
                     onTagNow = { nav = nav.tagNow() },
                     onSeeAll = { nav = nav.seeAll() },
-                    onRowClick = { }, // Edit (S7) comes in step 6.
+                    onRowClick = openTransaction,
                     onSetBudget = { }, // The budget sheet comes in step 9.
                     contentPadding = padding,
                     scrollState = homeScroll,
@@ -140,12 +152,25 @@ fun MainShell(container: AppContainer) {
                     currentKey = currentKey,
                     onSelectMonth = selectMonth,
                     onSelectFilter = { nav = nav.copy(filter = it) },
-                    onRowClick = { }, // Edit (S7) comes in step 6.
+                    onRowClick = openTransaction,
                     contentPadding = padding,
                     listState = transactionsList,
                 )
             }
         }
+    }
+
+    (nav.sheet as? Sheet.Edit)?.let { edit ->
+        EditSheet(
+            id = edit.id,
+            container = container,
+            currentKey = currentKey,
+            onClose = { nav = nav.copy(sheet = Sheet.None) },
+            onDeleted = {
+                nav = nav.copy(sheet = Sheet.None)
+                scope.launch { snackbarHostState.showSnackbar("This payment was deleted") }
+            },
+        )
     }
 }
 
