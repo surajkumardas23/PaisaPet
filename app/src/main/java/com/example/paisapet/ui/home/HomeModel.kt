@@ -132,5 +132,8 @@ private fun buddyCard(view: MonthView, readOnly: Boolean): BuddyCardModel {
     )
 }
 
+/** FR-03: the "Auto-tracking is off" card shows only after onboarding, and only while SMS is not granted. */
+fun showAutoTrackingBanner(onboardingComplete: Boolean, smsGranted: Boolean): Boolean = onboardingComplete && !smsGranted
+
 /** "1 day left", "7 days left". */
 fun daysLeftText(days: Int): String = if (days == 1) "1 day left" else "$days days left"

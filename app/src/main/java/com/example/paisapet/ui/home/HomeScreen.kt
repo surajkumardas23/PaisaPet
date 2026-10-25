@@ -52,6 +52,7 @@ import com.example.paisapet.ui.theme.OverBudgetRed
 import com.example.paisapet.ui.theme.SmsIcon
 import com.example.paisapet.ui.theme.SmsTile
 import com.example.paisapet.ui.theme.SurfaceContainer
+import com.example.paisapet.ui.theme.SurfaceContainerHigh
 import com.example.paisapet.ui.theme.UntaggedCard
 import com.example.paisapet.ui.theme.WarningText
 
@@ -70,6 +71,9 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     /** Kept by the shell so the position survives switching tabs. */
     scrollState: ScrollState,
+    /** FR-03: SMS permission is off; from showAutoTrackingBanner. */
+    showAutoTrackingOff: Boolean = false,
+    onOpenAppSettings: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -80,6 +84,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle("Home")
+        if (showAutoTrackingOff) AutoTrackingOffCard(onOpenAppSettings)
         Row(verticalAlignment = Alignment.CenterVertically) {
             MonthDropdown(model.monthKey, monthOptions, currentKey, onSelectMonth)
             Spacer(Modifier.weight(1f))
@@ -109,6 +114,27 @@ fun HomeScreen(
             }
         }
         Spacer(Modifier.height(88.dp)) // room above the "+ Add expense" button
+    }
+}
+
+@Composable
+private fun AutoTrackingOffCard(onOpenAppSettings: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = SurfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp)) {
+            Icon(painterResource(R.drawable.ic_warning), contentDescription = null, tint = WarningText, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("Auto-tracking is off", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = WarningText)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Paisa Pet can't see your payment SMS. Allow SMS access to capture payments automatically.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = InkSecondary,
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = onOpenAppSettings, shape = CircleShape) { Text("Open Settings") }
+            }
+        }
     }
 }
 

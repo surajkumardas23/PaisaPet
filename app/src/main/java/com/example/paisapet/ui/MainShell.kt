@@ -1,5 +1,6 @@
 package com.example.paisapet.ui
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -10,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,7 +21,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -38,9 +36,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.paisapet.AppContainer
 import com.example.paisapet.R
@@ -62,10 +62,14 @@ import com.example.paisapet.ui.edit.AddExpenseSheet
 import com.example.paisapet.ui.edit.EditSheet
 import com.example.paisapet.ui.home.HomeScreen
 import com.example.paisapet.ui.home.buildHomeModel
+import com.example.paisapet.ui.home.showAutoTrackingBanner
+import com.example.paisapet.ui.onboarding.isGranted
+import com.example.paisapet.ui.onboarding.openAppSettings
+import com.example.paisapet.ui.settings.BudgetSheet
+import com.example.paisapet.ui.settings.SettingsScreen
 import com.example.paisapet.ui.transactions.TransactionsScreen
 import com.example.paisapet.ui.transactions.buildTransactionsModel
 import com.example.paisapet.ui.theme.CardWhite
-import com.example.paisapet.ui.theme.InkSecondary
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 
@@ -113,16 +117,34 @@ fun MainShell(
     val view by remember(monthKey, today) { container.repository.observeMonth(monthKey, today) }
         .collectAsStateWithLifecycle(initialValue = null)
 
+    // The current month's budget for Settings and the budget sheet, whichever month the tabs show.
+    val currentView by remember(currentKey, today) { container.repository.observeMonth(currentKey, today) }
+        .collectAsStateWithLifecycle(initialValue = null)
+    val currentBudgetPaise = currentView?.summary?.budgetPaise
+
+    // FR-03: re-checked every time the app comes back to the front, e.g. from the system settings page.
+    val context = LocalContext.current
+    var smsGranted by remember { mutableStateOf(isGranted(context, Manifest.permission.RECEIVE_SMS)) }
+    LifecycleResumeEffect(Unit) {
+        smsGranted = isGranted(context, Manifest.permission.RECEIVE_SMS)
+        onPauseOrDispose { }
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val openTransaction: (Long) -> Unit = { id -> nav = nav.openTransaction(id) }
+    val editBudget: () -> Unit = { nav = nav.copy(sheet = Sheet.Budget) }
 
     when {
         nav.debugOpen && DebugTools.isAvailable -> PushedPage(title = DebugTools.TITLE, onBack = { nav = nav.copy(debugOpen = false) }) {
             DebugTools.Screen(container)
         }
         nav.settingsOpen -> PushedPage(title = "Settings", onBack = { nav = nav.copy(settingsOpen = false) }) {
-            SettingsPlaceholder(onOpenDebug = { nav = nav.copy(debugOpen = true) })
+            SettingsScreen(
+                budgetPaise = currentBudgetPaise,
+                onEditBudget = editBudget,
+                onOpenDebug = { nav = nav.copy(debugOpen = true) },
+            )
         }
         else -> Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -168,9 +190,12 @@ fun MainShell(
                     onTagNow = { nav = nav.tagNow() },
                     onSeeAll = { nav = nav.seeAll() },
                     onRowClick = openTransaction,
-                    onSetBudget = { }, // The budget sheet comes in step 9.
+                    onSetBudget = editBudget,
                     contentPadding = padding,
                     scrollState = homeScroll,
+                    // MainShell only runs after onboarding, so onboarding is complete here.
+                    showAutoTrackingOff = showAutoTrackingBanner(onboardingComplete = true, smsGranted = smsGranted),
+                    onOpenAppSettings = { openAppSettings(context) },
                 )
                 else -> TransactionsScreen(
                     model = buildTransactionsModel(loaded, nav.filter, monthKey, currentKey, today, zone),
@@ -186,6 +211,13 @@ fun MainShell(
         }
     }
 
+    if (nav.sheet == Sheet.Budget) {
+        BudgetSheet(
+            currentBudgetPaise = currentBudgetPaise,
+            onSave = container.repository::setBudget,
+            onClose = { nav = nav.copy(sheet = Sheet.None) },
+        )
+    }
     if (nav.sheet == Sheet.Add) {
         AddExpenseSheet(
             clock = container.clock,
@@ -227,27 +259,5 @@ private fun PushedPage(title: String, onBack: () -> Unit, content: @Composable (
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         }
         content()
-    }
-}
-
-/** Minimal Settings until step 9: only the debug entry (debug builds) or a short note (release). */
-@Composable
-private fun SettingsPlaceholder(onOpenDebug: () -> Unit) {
-    Column(Modifier.padding(16.dp)) {
-        if (DebugTools.isAvailable) {
-            Surface(
-                onClick = onOpenDebug,
-                shape = RoundedCornerShape(20.dp),
-                color = CardWhite,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(DebugTools.TITLE, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, modifier = Modifier.size(20.dp))
-                }
-            }
-        } else {
-            Text("More settings coming soon", style = MaterialTheme.typography.bodyLarge, color = InkSecondary)
-        }
     }
 }
