@@ -106,14 +106,14 @@ fun BudgetBar(percent: Int, color: Color, trackWidth: Dp) {
 
 /** The amount, big: red when over budget. */
 @Composable
-fun AmountText(m: WidgetModel.Budgeted, fontSize: TextUnit) {
+fun AmountText(m: WidgetModel.Budgeted, fontSize: TextUnit, align: TextAlign = TextAlign.Center) {
     Text(
         text = m.amountText,
         style = TextStyle(
             color = ColorProvider(if (m.overBudget) OverBudgetRed else InkText),
             fontSize = fontSize,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            textAlign = align,
         ),
         maxLines = 1,
     )

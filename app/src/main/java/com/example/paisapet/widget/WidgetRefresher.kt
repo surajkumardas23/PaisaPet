@@ -1,6 +1,7 @@
 package com.example.paisapet.widget
 
 import android.content.Context
+import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CancellationException
@@ -10,11 +11,17 @@ class WidgetRefresher(context: Context) {
 
     private val context = context.applicationContext
 
-    /** Never throws, except [CancellationException]. */
+    /** Never throws, except [CancellationException]. One widget failing does not stop the other. */
     suspend fun refreshIfPlaced() {
+        refresh(SmallWidget::class.java) { SmallWidget() }
+        refresh(WideWidget::class.java) { WideWidget() }
+    }
+
+    /** Updates [kind] only if at least one of it is placed. */
+    private suspend fun <T : GlanceAppWidget> refresh(kind: Class<T>, create: () -> T) {
         try {
-            if (GlanceAppWidgetManager(context).getGlanceIds(SmallWidget::class.java).isNotEmpty()) {
-                SmallWidget().updateAll(context)
+            if (GlanceAppWidgetManager(context).getGlanceIds(kind).isNotEmpty()) {
+                create().updateAll(context)
             }
         } catch (e: CancellationException) {
             throw e

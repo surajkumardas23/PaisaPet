@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The wide widget's "+ Add" pill: PaisaBlue from ui/theme/Color.kt. A drawable so the corners are round on every Android version. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF0A40E2" />
+    <corners android:radius="16dp" />
+</shape>

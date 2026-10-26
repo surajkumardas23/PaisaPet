@@ -8,4 +8,10 @@
     <string name="widget_small_description">See your misc budget left</string>
     <string name="widget_preview_amount" translatable="false">₹3,200</string>
     <string name="widget_preview_caption" translatable="false">left of ₹5,000</string>
+    <string name="widget_wide_name">Paisa Pet</string>
+    <string name="widget_wide_description">Your misc budget and last payment</string>
+    <string name="widget_add">+ Add</string>
+    <string name="widget_preview_budget_line" translatable="false">Budget ₹5,000 for Oct</string>
+    <string name="widget_preview_chip" translatable="false">36% used</string>
+    <string name="widget_preview_last_payment" translatable="false">–₹240 · Swiggy · Misc</string>
 </resources>
