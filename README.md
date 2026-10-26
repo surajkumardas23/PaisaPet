@@ -2,17 +2,12 @@
 
 See what's left of your misc budget before you tap Pay.
 
-[APK download](TODO) · [Demo video](TODO) · [Install guide](TODO) · [PRD](docs/prd.md) · [Pitch deck](TODO)
 
 ## What it is
 
 Paisa Pet is an offline Android app that reads UPI debit SMS on the phone and asks "Misc or Essential?" with one tap from the notification. It shows how much of your monthly misc budget is left through Buddy, a pet whose mood follows your spending, on the Home screen and in two home-screen widgets. There is no backend and no login.
 
-## Screenshots
 
-| Notification | Home | Widgets | Transactions |
-| --- | --- | --- | --- |
-| ![Notification](docs/screenshots/notification.png) | ![Home](docs/screenshots/home.png) | ![Widgets](docs/screenshots/widgets.png) | ![Transactions](docs/screenshots/transactions.png) |
 
 ## Features in v0.1
 
