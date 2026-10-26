@@ -202,6 +202,7 @@ The app has 9 in-app screens or sheets, plus notifications and two widgets; the 
 **S12 Buddy states (design reference only)** — 12-buddy-states.png
 
 - Not a screen in the app. Source for the five Buddy faces and colours. "Revive" and the interactive slider are not built.
+- v0.1 uses five placeholder vector drawables (res/drawable/buddy_*.xml, mapped only in ui/buddy/BuddyArt.kt); real art replaces those five files.
 
 ## User stories
 
@@ -254,16 +255,16 @@ Each requirement lists testable acceptance criteria; all are P0 except FR-17, FR
 - **FR-12 Transactions (P0).** Lists the current month newest first, grouped by day with day totals; filter chips show counts and filter instantly; header totals match Home.
 - **FR-13 Edit and delete (P0).** Category change saves on "Save changes". Delete asks to confirm, then removes the transaction and recalculates. SMS transactions keep amount and payee read-only; manual ones are fully editable.
 - **FR-14 Manual add (P0).** Amount > 0 required; Paid to optional; category defaults to Misc; date within the current month, not in the future. Saved with source = Manual and no notification.
-- **FR-15 Widgets (P0).** Small and wide widgets show Buddy's state and ₹ left (wide: also budget, % used, last payment, + Add). Tapping opens Home; + Add opens S8. Widgets refresh within 5 seconds of any change and at midnight.
-- **FR-16 Month reset (P0).** On the 1st, the new month starts at 0 spent with the default budget; Home, widgets and alerts use the new month. Past transactions are kept.
+- **FR-15 Widgets (P0).** Small and wide widgets show Buddy's state and ₹ left (wide: also budget, % used, last payment, + Add). Tapping opens Home; + Add opens S8. Widgets refresh within 5 seconds of any change and shortly after midnight (not built in v0.1: the widgets pick up a new month the first time any refresh trigger fires). **Built in v0.1.**
+- **FR-16 Month reset (P0).** On the 1st, the new month starts at 0 spent with the default budget; Home, widgets and alerts use the new month. Past transactions are kept. Widget part partly deferred: without the midnight job, a placed widget switches month at the next refresh trigger.
 - **FR-18 CSV export (P0).** Exports all transactions with the columns in "Data model" through the Android share sheet. File name paisa-pet-YYYY-MM-DD.csv. Works offline. Export uses the Android share sheet and a FileProvider (cache/exports, old files deleted before each export). The file is UTF-8 with a BOM, CRLF line ends, rows oldest first. Values: Misc / Essential / Not tagged, SMS / Manual, Notification / App / empty. A text cell starting with =, +, -, @ or a tab gets a leading apostrophe so spreadsheets do not run it as a formula.
 - **FR-19 Simulate SMS (P0, debug only).** Settings › Simulate SMS lets the builder paste a message body and sender ID and run it through the full pipeline (parse → save → notify). Absent in release builds.
-- **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication. Cloud backup is switched off (allowBackup=false), so payment data never leaves the phone.
+- **FR-20 Privacy (P0).** No INTERNET permission in the manifest. Raw SMS text is never stored; only parsed fields and a hash for de-duplication. Cloud backup is switched off (allowBackup=false), so payment data never leaves the phone. No INTERNET permission. Libraries add WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and FOREGROUND_SERVICE (WorkManager for the widgets); none of them can send data.
 - **FR-23 Past months (P0).** The month dropdown on Home and Transactions lists months with data; past months are read-only views with that month's budget.
 
 **Alerts and P1 extras**
 
-- **FR-17 Limit alerts (P1).** When % used first reaches 75% in a month, post "Buddy is getting sick — ₹X misc left this month." When it first goes over 100%, post "Buddy fainted — you've crossed your ₹Y misc budget." Each fires once per month; it re-arms if a budget increase or edit drops % below that level.
+- **FR-17 Limit alerts (P1).** When % used first reaches 75% in a month, post 'Buddy is getting sick' / '₹X misc left this month.' When it first goes over 100%, post 'Buddy fainted' / 'You've crossed your ₹Y misc budget. You are ₹Z over budget.' Each fires once per month; it re-arms if a budget increase or edit drops % below that level. Deferred to v0.2; not in v0.1. The channel budget_alerts exists and nothing posts to it. When built: hold back the payment whose prompt was just shown until it is tagged (so an untagged rent payment does not trigger 'Buddy fainted'); a late SMS from a past month never alerts.
 - **FR-21 Undo (P1).** After a tag from the notification, the notification changes to "Added to Misc · ₹1,560 left" with **Undo** for 10 seconds; Undo sets it back to Not tagged.
 - **FR-22 Quick add (P1).** Home shows chips +₹20 Chai, +₹50 Auto, +₹100 Quick; a tap opens S8 pre-filled (amount, Paid to, Misc).
 ## SMS capture and parsing rules
@@ -337,7 +338,7 @@ Only Misc and Not tagged payments in the current calendar month count against th
 | 75 to 100      | Sick     | Thermometer, unwell    | Orange | "Buddy is getting sick"    |
 | over 100       | Fainted  | Knocked out, X eyes    | Red    | "Buddy fainted"            |
 
-Buddy art: one vector drawable per state (exported from the Stitch screens or redrawn as simple Compose shapes). The same five assets serve Home, widgets and notification icons.
+Buddy art: one vector drawable per state (exported from the Stitch screens or redrawn as simple Compose shapes). The same five assets serve Home, widgets and notification icons. v0.1 uses five placeholder vector drawables (res/drawable/buddy_*.xml, mapped only in ui/buddy/BuddyArt.kt); real art replaces those five files.
 
 **Alerts (FR-17)**
 
@@ -371,12 +372,13 @@ Two notification channels and two Glance widgets; every tag, edit or budget chan
 - On the lock screen the notification shows 'New UPI payment · Unlock to tag' (private visibility); the amount, payee and buttons show after unlock.
 - When the payee is 'UPI payment', the title is '₹240 UPI payment'.
 - The body tap opens the Edit screen (S7) for that payment; until S7 exists it just opens the app.
+- The tag prompt's large icon (Buddy's state) is not built in v0.1.
 
 **Confirmation with Undo (P1, FR-21)**
 
 - After a tap, update the same notification to "Added to Misc · ₹1,560 left" with an **Undo** action, auto-dismissed after 10 seconds (setTimeoutAfter).
 
-**Alerts (P1, FR-17)** — copy as in the screenshots, with live numbers: "Buddy is getting sick — only ₹X misc left this month." and "Buddy fainted! You've crossed your ₹Y misc budget. You are ₹Z over budget." Tap opens Home.
+**Alerts (P1, FR-17)** — with live numbers: 'Buddy is getting sick' / '₹X misc left this month.' and 'Buddy fainted' / 'You've crossed your ₹Y misc budget. You are ₹Z over budget.' (title / text). Tap opens Home. Deferred to v0.2; not in v0.1. The channel budget_alerts exists and nothing posts to it. When built: hold back the payment whose prompt was just shown until it is tagged (so an untagged rent payment does not trigger 'Buddy fainted'); a late SMS from a past month never alerts.
 
 **Widgets** (11-widgets.png), built with Jetpack Glance
 
@@ -385,9 +387,10 @@ Two notification channels and two Glance widgets; every tag, edit or budget chan
 | Small  | 2x2  | "Paisa Pet", Buddy, "₹X left of ₹Y", progress bar in state colour                                                                       | Opens Home                 |
 | Wide   | 4x2  | Buddy, "₹X left", "Budget ₹Y for &lt;Month&gt;", "NN% used" chip, progress bar, last payment line ("–₹240 · Swiggy · Misc"), **\+ Add** | Opens Home; + Add opens S8 |
 
-- Refresh: call updateAll() after every insert, tag, edit, delete or budget change, plus the daily midnight job.
+- Refresh: call updateAll() after every insert, tag, edit, delete or budget change, plus a daily job shortly after midnight (not built in v0.1: the widgets pick up a new month the first time any refresh trigger above fires).
 - Before onboarding is complete, widgets show "Set up Paisa Pet" and open S1.
 - Changes vs screenshot: remove the "Glance" badge, the search bar and the "Material You widgets" labels (they are mock-up chrome).
+- Both widgets refresh after every payment, tag, edit, delete, add, budget change and onboarding change, whenever the app comes to the foreground, and when the time or time zone changes; with no widget placed nothing runs. The month label is the short month ('Budget ₹5,000 for Oct'). Over budget the amount is shown in red as 'over budget of ₹X'. '+ Add' opens the Add expense sheet on Home for the current month; tapping elsewhere opens Home. The widgets always show the current month. A wide-widget tap during onboarding just opens the app.
 
 ## Data model
 
@@ -474,9 +477,9 @@ A single native Android app in Kotlin with no backend; the only infrastructure i
 | ----------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------- |
 | Language          | Kotlin                                                                                         | Coroutines and Flow                    |
 | UI                | Jetpack Compose, Material 3, Navigation Compose                                                | One activity                           |
-| Storage           | Room (transactions, month budgets), Jetpack DataStore (preferences)                            | Local only                             |
-| Widgets           | Jetpack Glance (AppWidget)                                                                     | Small 2x2 and wide 4x2                 |
-| Background        | Manifest BroadcastReceiver for SMS and notification actions; WorkManager for the daily refresh | No foreground service                  |
+| Storage           | Room 2.8.5 (transactions, month budgets), Jetpack DataStore 1.3.0 (preferences); KSP 2.3.12 for the Room compiler | Local only                             |
+| Widgets           | Jetpack Glance 1.2.0 (glance-appwidget)                                                        | Small 2x2 and wide 4x2                 |
+| Background        | Manifest BroadcastReceiver for SMS and notification actions; WorkManager 2.12.0 (work-runtime-ktx, used by Glance for the widgets) | No foreground service                  |
 | Dependency wiring | Manual (a simple AppContainer)                                                                 | Hilt not needed at this size           |
 | Tests             | JUnit for the parser and budget maths                                                          | Run with ./gradlew test                |
 | SDK levels        | minSdk 26 (Android 8.0); target and compile = latest stable SDK in Android Studio              |                                        |
@@ -498,6 +501,7 @@ A single native Android app in Kotlin with no backend; the only infrastructure i
 **Release and distribution**
 
 - Release keystore created once in Android Studio (Build › Generate Signed App Bundle or APK). Keystore and passwords are never committed.
+- v0.1 build is signed with a local keystore kept outside the repository (never committed); the same keystore and a higher versionCode must be used for every later build.
 - Signed release APK uploaded to Google Drive (link set to "Anyone with the link") or GitHub Releases.
 - Tester guide (one page): enable "Install unknown apps" for the browser or Drive, expect a Play Protect warning, allow SMS and notifications, allow Autostart on Xiaomi/Oppo/Vivo, add the widget; open the app once after installing (Android sends no SMS to a newly installed app), never Force stop it, set the battery setting for Paisa Pet to Unrestricted, and use Allow restricted settings if the SMS permission is greyed out. If a payment is not captured, add it with + Add expense and send the SMS with the digits masked.
 - Play Store is out of scope; Google restricts apps that read SMS.
@@ -510,7 +514,7 @@ Privacy and reliability matter more than polish: a money app that leaks data or 
 
 | ID     | Area          | Requirement                                                                                                                                                        |
 | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| NFR-01 | Privacy       | No network access (no INTERNET permission, no analytics or crash SDKs). Raw SMS bodies never stored or logged in release builds.                                   |
+| NFR-01 | Privacy       | No network access (no INTERNET permission, no analytics or crash SDKs). Raw SMS bodies never stored or logged in release builds. Libraries add WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and FOREGROUND_SERVICE (WorkManager for the widgets); none of them can send data. |
 | NFR-02 | Performance   | SMS to saved transaction ≤ 5 s; app cold start to Home ≤ 2 s on a mid-range phone; Home and Transactions scroll smoothly with 500 transactions.                    |
 | NFR-03 | Battery       | No foreground service, no polling; work runs only on SMS arrival, a tag, or the one daily job.                                                                     |
 | NFR-04 | Reliability   | Capture works with the app closed and after a reboot. No crash on unknown SMS formats (parser failures drop the message).                                          |
@@ -569,6 +573,7 @@ Build in 9 phases, riskiest first, so a tester build exists by Sunday afternoon 
 | 8\. Iterate and submit | Fix top feedback, P1 items if time (FR-21, FR-22), final APK, demo video, update this PRD with learnings        | —                          | Submission sent                                                           | Mon 26 Oct, by 11:30 PM |
 
 **Status:** Built in order, 0.5 to 5 complete; Phase 6 is the signed tester APK; Phase 7 (widgets, Buddy art, limit alerts) follows.
+Phases 0.5 to 5 complete. Phase 7 built in part (small and wide widget, live refresh); limit alerts and the midnight job are deferred to v0.2.
 
 **Working with Claude Code**
 
@@ -592,3 +597,4 @@ Two questions block early phases; the rest have a default the build follows unle
 | Should a refund SMS reduce misc spend?                                           | Owner          | No      | No; user edits the original               |
 | Buddy art: export from Stitch or redraw as simple shapes?                        | Design         | Phase 7 | Simple Compose shapes in state colours    |
 | Should payments to your own account (self-transfers) count against the misc budget? | Owner       | No      | Yes, counted; the user tags it Essential or deletes it |
+| When should limit alerts fire for an untagged payment?                           | Owner          | No      | Decided: hold back only the payment whose prompt was just shown |

@@ -28,7 +28,7 @@ The package is `com.example.paisapet`.
 - Phase 3: SMS receiver, tag notification and tag actions, guarded fallback and debug Simulate SMS. 337 JVM tests green; verified on my phone with real HDFC payments. Done.
 - Phase 4: onboarding screens, theme, start-up gate and budget saving. Done.
 - Phase 5: navigation shell, Home, Transactions, Edit, Add, Settings with budget editing, past months (read-only), notification body tap and CSV export. 636 JVM tests and 80 phone tests green; verified on my phone. Done.
-- Phase 6: not started (signed tester APK and tester guide). Phase 7: widgets, Buddy art and limit alerts, after the tester build.
+- Phase 6/7: release readiness (version 0.1, .gitignore protects keystores and APKs), small and wide widgets with live refresh. 713 JVM tests and 80 phone tests green. Deferred to v0.2: limit alerts (FR-17), the midnight WorkManager job, Undo, quick-add chips, dark theme, real Buddy art. Next: sign the APK and send it to testers; then iterate (bank templates from tester samples).
 
 Update this section at the end of every phase.
 
@@ -91,3 +91,6 @@ Full design is in the PRD ("Data model", "Budget logic, Buddy states and alerts"
 - The app clock follows the system zone at the moment of use (time/SystemClock); do not cache a ZoneId.
 - CSV export: share sheet + FileProvider; the only manifest addition for it is the provider. Keep formula neutralisation in export/CsvExport.kt.
 - Never run connectedAndroidTest on a phone with real payment data; it uninstalls the app.
+- Widgets: Glance. SmallWidget and WideWidget read through widget/WidgetData.kt (one-shot first frame, then collect the same flow inside provideContent); content comes only from the pure widget/WidgetModel.kt. The refresh path is AfterDataChange (one Mutex) -> WidgetRefresher.refreshIfPlaced (no-op with no widget). To add alerts later, extend AfterDataChange (constructor parameters with defaults) rather than adding new hooks.
+- Widget taps use openAppIntent(context, target) with target 'home' or 'add' and a unique data URI; MainActivity turns them into OpenRequest(OpenTarget.Home / AddExpense); NavState.open(target) applies them; the gate drops them during onboarding.
+- Release builds: R8 is on and works with Glance and WorkManager without keep-rules; always run assembleRelease and check the release APK after adding a library. Never commit a keystore or an APK.
